@@ -13,7 +13,7 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 from numpy.fft import fft
-np.seterr(divide='ignore', invalid='ignore')
+# np.seterr(divide='ignore', invalid='ignore')
 import random
 #
 
@@ -21,23 +21,30 @@ import scipy.stats
 from sklearn.metrics import make_scorer
 from sklearn.cross_validation import cross_val_score
 from sklearn.grid_search import RandomizedSearchCV
+from sklearn.utils import shuffle
 
-#
-
+# SEQUENCE
 import sklearn_crfsuite
-# import pycrfsuite
 from sklearn_crfsuite import scorers
 from sklearn_crfsuite import metrics
 
-
+# CLUSTERING 
+#import matplotlib.pyplot as plt
+#from matplotlib.colors import ListedColormap
+from sklearn.cluster import KMeans
 
 # Print options
 np.set_printoptions(suppress=True)
+np.set_printoptions(precision=2)
 
 # Parameters
 sequence_length_sec = 30 
 sub_seq_length_sec = 3
 data_frequency = 4
+feature_length = sub_seq_length_sec*data_frequency
+
+
+np.random.seed(42)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
@@ -87,42 +94,56 @@ def normalize_train(sequences):
 		normalized_sequences.append(np.array(temp_seq,dtype=float))
 	return [normalized_seq.T for normalized_seq in normalized_sequences],normalization_constants
 
-feature_length = sub_seq_length_sec*data_frequency
-def seq2seqfeatures(sequences,labels,feature_length):
+
+def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 	x_train = []
 	y_train = []
 	for label,seq in zip(labels,sequences):
-		# looking at 30 seconds of data, 120 points.
-		data_points = int(len(seq) / feature_length)
 		features = []
 		label_set = []
 		for i in range(data_points):
-			features.append(extractQfeatures(seq[i*feature_length:(i+1)*feature_length-1]))
-			label_set.append(str(label))
+			temp = extractQfeatures(seq[i*feature_length:(i+1)*feature_length-1],export_to_list_or_dict)
+			if temp: 
+				features.append(temp)
+				label_set.append(str(label))
 		x_train.append(features)
 		y_train.append(label_set)
 	return x_train,y_train
 
-def extractQfeatures(feature_data):
+def extractQfeatures(feature_data,list_or_dict):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	# normalize magnitude: 
 	magnitude = (magnitude - np.mean(magnitude))/np.var(magnitude)
+	if np.var(magnitude) == 0:
+		print "0 var mag"
 	feature_data = np.c_[feature_data,magnitude] 
 	#features
-	feature_seq={}
 	mean = np.mean(feature_data,0)
 	variance = np.std(feature_data,0)
 	freq_space = abs(fft(feature_data))
 	freq_mean= np.mean(freq_space,0)
 	freq_var = np.std(feature_data,0)
-	for i in range(len(feature_data.T)):
-		feature_seq["mean"+str(i)] = mean[i]
-		feature_seq["var"+str(i)] = variance[i]
-		feature_seq["fmean"+str(i)] = freq_mean[i]
-		feature_seq["fvar"+str(i)] = freq_var[i]
+	# Check for nan values:
+	if list_or_dict:
+		feature_seq={}
+		if np.any(np.isnan([mean,variance,freq_mean,freq_var])):
+			print "Nan feature"
+		else:
+			for i in range(len(feature_data.T)):
+				feature_seq={}
+				feature_seq["mean"+str(i)] = mean[i]
+				feature_seq["var"+str(i)] = variance[i]
+				feature_seq["fmean"+str(i)] = freq_mean[i]
+				feature_seq["fvar"+str(i)] = freq_var[i]
+	else:
+		feature_seq=[]
+		if np.any(np.isnan([mean,variance,freq_mean,freq_var])):
+			print "Nan feature"
+		else:
+			feature_seq = np.concatenate((mean, variance, freq_mean, freq_var))
 	return feature_seq
 
-	# 25 % energy
+# 25 % energy
 	# 75 %
 	# 10 %
 	# fluctuations, diff
@@ -145,16 +166,14 @@ def training(X_train, y_train):
 	crf.fit(X_train, y_train)
 	return crf
 
-
-
 # labels = list(crf.classes_)
 # labels.remove('O')
 
 
 def testing(crf,X_test,y_test):
+	print("Results:")
 	labels = list(crf.classes_)
 	y_pred = crf.predict(X_test)
-
 	sorted_labels = sorted(labels,key=lambda name: (name[1:], name[0]))
 	print(metrics.flat_classification_report(y_test, y_pred, labels=sorted_labels, digits=3))
 	return
@@ -185,18 +204,26 @@ def load_q_data(no_lable_vs_lable):
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
 
-def main():
-	"""Main entry point for the script."""
-	
-	no_lable_vs_lable = 0.7
-	training_vs_testing = 0.8
 
-	# Sort and feature extract:
+"""
+Data filter:
+	Slicing to 18.0511563087% of non lable data
+				 precision    recall  f1-score   support
+
+			0      0.851     0.914     0.881     18441
+			1      0.870     0.783     0.824     13590
+  avg / total      0.859     0.858     0.857     32031
+
+"""
+
+
+def run_crf():
+	no_lable_vs_lable = 0.7
+
 	training_data = load_q_data(no_lable_vs_lable)
 	sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
 	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency)
-
+	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
 	# Randomize and split:
 	combined = zip(X, y)
 	random.shuffle(combined)
@@ -206,13 +233,83 @@ def main():
 	X_test = X[cut_id:]
 	y_train = y[:cut_id]
 	y_test = y[cut_id:]
-
 	# Train algorithm:
 	crf = training(X_train, y_train)
-
 	# Test algorithm:
 	testing(crf,X_test,y_test)
+	return
+
+"""
+
+X = check_array(X, accept_sparse='csr', dtype=np.float64)
+  File "/Users/victorbergelin/Repo/Exjobb/Code/Py/venv/lib/python2.7/site-packages/sklearn/utils/validation.py", line 373, in check_array
+      array = np.array(array, dtype=dtype, order=order, copy=copy)
+	  ValueError: setting an array element with a sequence.
+	  
+order=None
+copy=False
+dtype=np.float64
+
+"""
+
+
+
+
+"""
+def clustering():
+
+n_neighbors = 15
+no_lable_vs_lable = 0.7
+
+# Sort and feature extract:
+training_data = load_q_data(no_lable_vs_lable)
+sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
+
+norm_sequences,normalization_constants = normalize_train(sequences)
+X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,False)
+
+X, y = shuffle(X, y, random_state=0)
+
+
+XX = X
+yy = y
+
+
+X = np.array(X,dtype=np.float64)
+y = np.array(y.dtype=np.float64)
+
+XX = X
+yy = y
+
+X = X.flatten()
+y = y.flatten()
+
+kmeans = KMeans(n_clusters=2)
+kmeans.fit(X)
+
+	return
+"""
+
+
+def bench_k_means(estimator, name, data):
+    t0 = time()
+    estimator.fit(data)
+    print('% 9s   %.2fs    %i   %.3f   %.3f   %.3f   %.3f   %.3f    %.3f'
+          % (name, (time() - t0), estimator.inertia_,
+             metrics.homogeneity_score(labels, estimator.labels_),
+             metrics.completeness_score(labels, estimator.labels_),
+             metrics.v_measure_score(labels, estimator.labels_),
+             metrics.adjusted_rand_score(labels, estimator.labels_),
+             metrics.adjusted_mutual_info_score(labels,  estimator.labels_),
+             metrics.silhouette_score(data, estimator.labels_,
+                                      metric='euclidean',
+                                      sample_size=sample_size)))
+
+def main():
+	"""Main entry point for the script."""
 	
+	# crf()
+
 	return
 
 if __name__ == '__main__':
