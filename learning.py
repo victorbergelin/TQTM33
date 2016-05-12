@@ -29,6 +29,9 @@ import sklearn_crfsuite
 from sklearn_crfsuite import scorers
 from sklearn_crfsuite import metrics
 
+# FEATURE IMPLEMENTAITON: 
+from collections import Counter
+
 # CLUSTERING 
 #import matplotlib.pyplot as plt
 #from matplotlib.colors import ListedColormap
@@ -67,6 +70,32 @@ def loaddata(file_name):
 				continue
 			sequence_list.append(list(row))
 	return sequence_list
+
+def load_q_data(no_lable_vs_lable):
+	non_label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/NonSmoking'
+	label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking'
+	testing_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TestingData/Smoking'
+	# load lables
+	list_of_files = getfilelist(label_directory)
+	lable_data = [loaddata(file_path) for file_path in list_of_files]
+	random.shuffle(lable_data)
+	# load non lables
+	list_of_files = getfilelist(non_label_directory)
+	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
+	random.shuffle(non_lable_data)
+	# count content
+	non_lable_fraction = float(sum(len(x) for x in lable_data))/float(sum(len(x) for x in non_lable_data))
+	conversion_fraction = non_lable_fraction/no_lable_vs_lable
+	print "Data filter:" 
+	if conversion_fraction < 1:
+		non_lable_cut_id = int(len(non_lable_data)*conversion_fraction)
+		training_data = lable_data + non_lable_data[:non_lable_cut_id]
+		print "Slicing to " + str(conversion_fraction*100) + "% of non lable data"
+	else:
+		lable_cut_id = int(len(lable_data)/conversion_fraction)
+		training_data = lable_data[:lable_cut_id] + non_lable_data
+		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
+	return training_data
 
 # DATA HANDLER FUNCTIONS
 # New data seq
@@ -138,7 +167,7 @@ array([[ -0.93,   0.48,   0.13,  33.7 ,   1.29],
 """
 
 
-def extractQfeatures(feature_data,list_or_dict):
+def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	# normalize magnitude: 
 	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
@@ -174,12 +203,12 @@ def extractQfeatures(feature_data,list_or_dict):
 				feature_seq["var"+str(i)] = variance[i]
 				feature_seq["fmean"+str(i)] = freq_mean[i]
 				feature_seq["freq_var"+str(i)] = freq_var[i]
-				feature_seq["diff_feat"+str(i)] = diff_feat[i]
-				feature_seq["diff_freq"+str(i)] = diff_freq[i]
-				feature_seq["p25_feat"+str(i)] = p25_feat[i]
-				feature_seq["p75_feat"+str(i)] = p75_feat[i]
-				feature_seq["p25_freq"+str(i)] = p25_freq[i]
-				feature_seq["p75_freq"+str(i)] = p75_freq[i]
+				#feature_seq["diff_feat"+str(i)] = diff_feat[i]
+				#feature_seq["diff_freq"+str(i)] = diff_freq[i]
+				#feature_seq["p25_feat"+str(i)] = p25_feat[i]
+				#feature_seq["p75_feat"+str(i)] = p75_feat[i]
+				#feature_seq["p25_freq"+str(i)] = p25_freq[i]
+				#feature_seq["p75_freq"+str(i)] = p75_freq[i]
 	else:
 		feature_seq=[]
 		if np.any(np.isnan([mean,variance,freq_mean,freq_var])):
@@ -221,34 +250,6 @@ def testing(crf,X_test,y_test):
 	y_pred = crf.predict(X_test)
 	sorted_labels = sorted(labels,key=lambda name: (name[1:], name[0]))
 	print(metrics.flat_classification_report(y_test, y_pred, labels=sorted_labels, digits=3))
-	return
-
-def load_q_data(no_lable_vs_lable):
-	non_label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/NonSmoking'
-	label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking'
-	testing_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TestingData/Smoking'
-	# load lables
-	list_of_files = getfilelist(label_directory)
-	lable_data = [loaddata(file_path) for file_path in list_of_files]
-	random.shuffle(lable_data)
-	# load non lables
-	list_of_files = getfilelist(non_label_directory)
-	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
-	random.shuffle(non_lable_data)
-	# count content
-	non_lable_fraction = float(sum(len(x) for x in lable_data))/float(sum(len(x) for x in non_lable_data))
-	conversion_fraction = non_lable_fraction/no_lable_vs_lable
-	print "Data filter:" 
-	if conversion_fraction < 1:
-		non_lable_cut_id = int(len(non_lable_data)*conversion_fraction)
-		training_data = lable_data + non_lable_data[:non_lable_cut_id]
-		print "Slicing to " + str(conversion_fraction*100) + "% of non lable data"
-	else:
-		lable_cut_id = int(len(lable_data)/conversion_fraction)
-		training_data = lable_data[:lable_cut_id] + non_lable_data
-		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
-	return training_data
-
 
 def shuffle_and_cut(X,y,training_vs_testing):
 	X, y = shuffle(X, y, random_state=0)
@@ -259,6 +260,15 @@ def shuffle_and_cut(X,y,training_vs_testing):
 	y_test = y[cut_id:]
 	return X_train,X_test,y_train,y_test
 	
+# FEATURE DATA: 
+def print_state_features(state_features):
+	for (attr, label), weight in state_features:
+		print("%0.6f %-8s %s" % (weight, label, attr))
+		print("Top positive:")
+		print_state_features(Counter(crf.state_features_).most_common(30))
+		print("\nTop negative:")
+		print_state_features(Counter(crf.state_features_).most_common()[-30:])
+
 def bench_k_means(estimator, name, X, y, sample_size):
 	t0 = time()
 	estimator.fit(X)
@@ -293,8 +303,14 @@ Data filter:
 
 """
 def run_crf():
+
+	# Parameters
+	sequence_length_sec = 30
 	no_lable_vs_lable = 0.7
 	training_vs_testing = 0.8
+	sub_seq_length_sec = 3
+	data_frequency = 4
+	feature_length = sub_seq_length_sec*data_frequency
 
 	training_data = load_q_data(no_lable_vs_lable)
 	sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
@@ -306,9 +322,6 @@ def run_crf():
 	crf = training(X_train, y_train)
 	# Test algorithm:
 	testing(crf,X_test,y_test)
-	return
-
-
 
 
 """
