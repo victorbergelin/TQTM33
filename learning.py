@@ -52,7 +52,7 @@ sub_seq_length_sec = 3
 data_frequency = 4
 feature_length = sub_seq_length_sec*data_frequency
 
-np.random.seed(42)
+np.random.seed(1)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
@@ -168,10 +168,9 @@ array([[ -0.93,   0.48,   0.13,  33.7 ,   1.29],
 
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
-	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
-	# normalize magnitude: 
-	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
-	feature_data = np.c_[feature_data,magnitude] 
+	#magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
+	#magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
+	#feature_data = np.c_[feature_data,magnitude] 
 	#features
 	mean = np.mean(feature_data,0)
 	variance = np.std(feature_data,0)
@@ -197,8 +196,11 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 			print "Nan feature"
 			print [mean,variance,freq_mean,freq_var,diff_feat ,diff_freq ,p25_feat ,p75_feat, p25_freq, p75_freq]
 		else:
+			#print "-----"
+			#print len(feature_data.T)
+			#print range(len(feature_data.T))
+			feature_seq={}
 			for i in range(len(feature_data.T)):
-				feature_seq={}
 				feature_seq["mean"+str(i)] = mean[i]
 				feature_seq["var"+str(i)] = variance[i]
 				feature_seq["fmean"+str(i)] = freq_mean[i]
@@ -269,79 +271,10 @@ def print_state_features(state_features):
 		print("\nTop negative:")
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
 
-def bench_k_means(estimator, name, X, y, sample_size):
-	t0 = time()
-	estimator.fit(X)
-	rand_score = metrics.adjusted_rand_score(y, estimator.labels_)
-	mutual_info = metrics.adjusted_mutual_info_score(y,  estimator.labels_)
 
-	print('% 9s   %.2fs    %i   %.3f   %.3f   %.3f   %.3f   %.3f' #    %.3f'
-			% (name, (time() - t0), estimator.inertia_,
-				metrics.homogeneity_score(y, estimator.labels_),
-				metrics.completeness_score(y, estimator.labels_),
-				metrics.v_measure_score(y, estimator.labels_),
-				rand_score,
-				mutual_info))
-	return rand_score,mutual_info
+crf.state_features_
 
-"""
-, metrics.silhouette_score(data, estimator.labels_,
-                                      metric='euclidean',
-                                      sample_size=sample_size)))
-
-"""
-
-
-"""
-Data filter:
-	Slicing to 18.0511563087% of non lable data
-				 precision    recall  f1-score   support
-
-			0      0.851     0.914     0.881     18441
-			1      0.870     0.783     0.824     13590
-  avg / total      0.859     0.858     0.857     32031
-
-"""
-def run_crf():
-
-	# Parameters
-	sequence_length_sec = 30
-	no_lable_vs_lable = 0.7
-	training_vs_testing = 0.8
-	sub_seq_length_sec = 3
-	data_frequency = 4
-	feature_length = sub_seq_length_sec*data_frequency
-
-	training_data = load_q_data(no_lable_vs_lable)
-	sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
-	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-	# Randomize and split:
-	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	# Train algorithm:
-	crf = training(X_train, y_train)
-	# Test algorithm:
-	testing(crf,X_test,y_test)
-
-
-"""
-no_lable_vs_lable = 0.7
-training_vs_testing = 0.8
-
-training_data = load_q_data(no_lable_vs_lable)
-sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
-norm_sequences,normalization_constants = normalize_train(sequences)
-X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-# Randomize and split:
-X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-# Train algorithm:
-crf = training(X_train, y_train)
-# Test algorithm:
-testing(crf,X_test,y_test)
-
-"""
-
-
+# CLUSTERING: 
 def clustering():
 	sequence_length_sec = 15
 	sub_seq_length_sec = 15
@@ -370,7 +303,51 @@ def clustering():
 	print(79 * '_')
 	return 
 
+def bench_k_means(estimator, name, X, y, sample_size):
+	t0 = time()
+	estimator.fit(X)
+	rand_score = metrics.adjusted_rand_score(y, estimator.labels_)
+	mutual_info = metrics.adjusted_mutual_info_score(y,  estimator.labels_)
 
+	print('% 9s   %.2fs    %i   %.3f   %.3f   %.3f   %.3f   %.3f' #    %.3f'
+			% (name, (time() - t0), estimator.inertia_,
+				metrics.homogeneity_score(y, estimator.labels_),
+				metrics.completeness_score(y, estimator.labels_),
+				metrics.v_measure_score(y, estimator.labels_),
+				rand_score,
+				mutual_info))
+	return rand_score,mutual_info
+
+"""
+Data filter:
+	Slicing to 18.0511563087% of non lable data
+				 precision    recall  f1-score   support
+
+			0      0.851     0.914     0.881     18441
+			1      0.870     0.783     0.824     13590
+  avg / total      0.859     0.858     0.857     32031
+
+"""
+def run_crf():
+
+# Parameters
+sequence_length_sec = 30
+no_lable_vs_lable = 0.7
+training_vs_testing = 0.8
+sub_seq_length_sec = 3
+data_frequency = 4
+feature_length = sub_seq_length_sec*data_frequency
+
+training_data = load_q_data(no_lable_vs_lable)
+sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
+norm_sequences,normalization_constants = normalize_train(sequences)
+X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+# Randomize and split:
+X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+# Train algorithm:
+crf = training(X_train, y_train)
+# Test algorithm:
+testing(crf,X_test,y_test)
 
 def main():
 	"""Main entry point for the script."""
