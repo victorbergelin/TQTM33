@@ -13,7 +13,7 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 from numpy.fft import fft
-
+import glob
 import random
 from time import time
 #
@@ -33,9 +33,11 @@ from sklearn_crfsuite import metrics
 from collections import Counter
 
 # CLUSTERING 
-#import matplotlib.pyplot as plt
-#from matplotlib.colors import ListedColormap
-# from sklearn import metrics
+import matplotlib  
+matplotlib.use('TkAgg')   
+import matplotlib.pyplot as plt  
+from matplotlib.colors import ListedColormap
+from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.datasets import load_digits
 from sklearn.decomposition import PCA
@@ -56,25 +58,40 @@ np.random.seed(1)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
-	list_of_files = [join(directory, f) for f in listdir(directory) if isfile(join(directory, f)) and f[0]!='.' ]
+	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
 	return list_of_files
 
-def loaddata(file_name):
+def loaddata(file_name,headerrows=1):
 	sequence_list = []
 	with open(file_name,'rb') as f:
 		reader = csv.reader(f)
 		header = ''
 		for i, row in enumerate(reader):
-			if i == 0:
+			if i <= headerrows-1:
 				header = list(row)
 				continue
 			sequence_list.append(list(row))
 	return sequence_list
 
+
+def loadrawdata(file_name,headerrows=1):
+    sequence_list = []
+    with open(file_name,'rb') as f:
+        reader = csv.reader(f)
+        header = list()
+        for i, row in enumerate(reader):
+            if i <= headerrows-1:
+                header.append(list(row))
+			else:
+            	sequence_list.append(list(row))
+		print header
+    return sequence_list,header
+
+
 def load_q_data(no_lable_vs_lable):
-	non_label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/NonSmoking'
-	label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking'
-	testing_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TestingData/Smoking'
+	non_label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/NonSmoking/*'
+	label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking/*'
+	testing_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TestingData/Smoking/*'
 	# load lables
 	list_of_files = getfilelist(label_directory)
 	lable_data = [loaddata(file_path) for file_path in list_of_files]
@@ -96,6 +113,85 @@ def load_q_data(no_lable_vs_lable):
 		training_data = lable_data[:lable_cut_id] + non_lable_data
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
+
+# LOAD RAW DATA:
+
+"""
+
+PRIMARY:
+File Exported by Q - (c) 2009 Affectiva Inc.
+File Version: 1.01
+Firmware Version: 1.81
+UUID: AQL441200KG
+Sampling Rate: 4
+Start Time: 2014-09-11 08:06:19 Offset:-04
+Time,Z-axis,Y-axis,X-axis,Battery,∞Celsius,EDA(uS),Event
+---------------------------------------------------------
+08:06:19.000,0.450,0.430,-0.660,-1,42.000,1.100,0
+
+
+OLD: 
+head -n 5 /Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking/100_1.csv 
+Label,sub_nr,sub_log,sub_phase,sub_datenum,sub_z,sub_y,sub_x,sub_battery,sub_temp,sub_EDA
+1,100,1,2,1410514767,-0.68,0.47,-0.14,-1,34.1,0.769
+1,100,1,2,1410514767.25,-0.65,0.67,-0.27,-1,34.1,0.785
+1,100,1,2,1410514767.5,-0.59,0.6,-0.33,-1,34.1,0.803
+1,100,1,2,1410514767.75,-0.61,0.76,-0.53,-1,34.1,0.824
+
+
+"""
+
+filepath='/Users/victorbergelin/Repo/exjobb/Code/Data/Rawdataimport'
+
+
+
+def load_raw_data(filepath):
+# 1. läsa in fil eller filer från mapp
+# Hur formateras filerna från csv export?
+list_of_markers = getfilelist(filepath+'/markers*')
+list_of_logs = getfilelist(filepath+'/LOG*')
+# 1.1 Läsa CSV m. ts
+marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
+log_data_headers = [loadrawdata(file_path,8) for file_path in list_of_logs]
+
+# Extract time information from headers:
+
+# 1. markers:
+for markers,headers in marker_data_headers:
+    print headers
+
+
+# 2. logs:
+for datasets,headers in log_data_headers:
+	print headers
+	
+
+
+
+
+
+# 1.2 Läsa markers
+
+
+
+# 1.3 Create label baseline
+
+# 1.4 Fill labels from hyper parameter parameters
+
+# 2. 
+
+# 3. 
+#
+	pass
+
+
+
+
+
+
+
+
+
 
 # DATA HANDLER FUNCTIONS
 # New data seq
@@ -168,9 +264,9 @@ array([[ -0.93,   0.48,   0.13,  33.7 ,   1.29],
 
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
-	#magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
-	#magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
-	#feature_data = np.c_[feature_data,magnitude] 
+	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
+	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
+	feature_data = np.c_[feature_data,magnitude] 
 	#features
 	mean = np.mean(feature_data,0)
 	variance = np.std(feature_data,0)
@@ -196,17 +292,15 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 			print "Nan feature"
 			print [mean,variance,freq_mean,freq_var,diff_feat ,diff_freq ,p25_feat ,p75_feat, p25_freq, p75_freq]
 		else:
-			#print "-----"
-			#print len(feature_data.T)
-			#print range(len(feature_data.T))
 			feature_seq={}
 			for i in range(len(feature_data.T)):
 				feature_seq["mean"+str(i)] = mean[i]
 				feature_seq["var"+str(i)] = variance[i]
 				feature_seq["fmean"+str(i)] = freq_mean[i]
 				feature_seq["freq_var"+str(i)] = freq_var[i]
-				#feature_seq["diff_feat"+str(i)] = diff_feat[i]
-				#feature_seq["diff_freq"+str(i)] = diff_freq[i]
+				feature_seq["diff_feat"+str(i)] = diff_feat[i]
+				feature_seq["diff_freq"+str(i)] = diff_freq[i]
+				# percentile decrease performance:
 				#feature_seq["p25_feat"+str(i)] = p25_feat[i]
 				#feature_seq["p75_feat"+str(i)] = p75_feat[i]
 				#feature_seq["p25_freq"+str(i)] = p25_freq[i]
@@ -225,7 +319,7 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	# 10 %
 	# fluctuations, diff
 	## Frequency: fft
-	# sum of frequency in bands: 0-1 hz, 1-3, 3-10 hz, 10+ hz
+	# sum of frequency in bands: 0-1 hz, 1-3, 3-10 hzb, 10+ hz
 	## Nr peaks: 
 	# avg peak width
 	# apply features
@@ -242,6 +336,32 @@ def training(X_train, y_train):
 			)
 	crf.fit(X_train, y_train)
 	return crf
+
+def trainingRandomized(X_train, y_train):
+	crf = sklearn_crfsuite.CRF(
+			algorithm='lbfgs',
+			max_iterations=100,
+			all_possible_transitions=True
+			)
+	params_space = {
+			'c1': scipy.stats.expon(scale=0.5),
+			'c2': scipy.stats.expon(scale=0.05),
+			}
+	# use the same metric for evaluation
+	f1_scorer = make_scorer(metrics.flat_f1_score,average='weighted', labels=labels)
+
+	rs = RandomizedSearchCV(crf, params_space,
+			cv=3,
+			verbose=1,
+			n_jobs=-1,
+			n_iter=50,
+			scoring=f1_scorer)
+	rs.fit(X_train, y_train)
+	# crf = rs.best_estimator_
+	print('best params:', rs.best_params_)
+	print('best CV score:', rs.best_score_)
+	print('model size: {:0.2f}M'.format(rs.best_estimator_.size_ / 1000000))
+	return rs
 
 # labels = list(crf.classes_)
 # labels.remove('O')
@@ -272,7 +392,7 @@ def print_state_features(state_features):
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
 
 
-crf.state_features_
+# crf.state_features_
 
 # CLUSTERING: 
 def clustering():
@@ -346,6 +466,8 @@ X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,
 X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
 # Train algorithm:
 crf = training(X_train, y_train)
+
+crf = trainingRandomized(X_train, y_train)
 # Test algorithm:
 testing(crf,X_test,y_test)
 
@@ -353,7 +475,6 @@ def main():
 	"""Main entry point for the script."""
 	# clustering()	
 	run_crf()
-
 	return
 
 if __name__ == '__main__':
