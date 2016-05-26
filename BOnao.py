@@ -84,26 +84,3 @@ for i in range(N_iter):
 	BOnao.save_report()
 BOnao.plot_convergence()
 
-''' >>> help(GPyOpt.methods.BayesianOptimization)
-	run_optimization(self, max_iter=None, n_inbatch=1, acqu_optimize_method='fast_random', acqu_optimize_restarts=200, batch_method='predictive', eps=1e-08, n_procs=1, true_gradients=True, verbose=True)
-	 |      Runs Bayesian Optimization for a number 'max_iter' of iterations (after the initial exploration data)
-	 |
-	 |      :param max_iter: exploration horizon, or number of acquisitions. It nothing is provided optimizes the current acquisition.
-	 |          :param n_inbatch: number of samples to collected everytime *f* is evaluated (one by default).
-	 |      :param acqu_optimize_method: method to optimize the acquisition function
-	 |          -'DIRECT': uses the DIRECT algorithm of Jones and Stuckmann.
-	 |          -'CMA': uses the Covariance Matrix Adaptation Algorithm.
-	 |              -'brute': Run local optimizers in a grid of points.
-	 |              -'random': Run local optimizers started at random locations.
-	 |          -'fast_brute': the same as brute but runs only one optimizer in the best location. It is used by default.
-	 |          -'fast_random': the same as random but runs only one optimizer in the best location.
-	 |      :param acqu_optimize_restarts: numbers of random restarts in the optimization of the acquisition function, default = 20.
-	 |          :param batch_method: method to collect samples in batches
-	 |          -'predictive': uses the predicted mean in the selected sample to update the acquisition function.
-	 |          -'lp': used a penalization of the acquisition function to based on exclusion zones.
-	 |          -'random': collects the element of the batch randomly
-	 |      :param eps: minimum distance between two consecutive x's to keep running the model
-	 |      :param n_procs: The number of processes used for evaluating the given function *f* (ideally nprocs=n_inbatch).
-	 |      :param true_gradients: If the true gradients (can be slow) of the acquisition ar an approximation is used (True, default).
-	 |      :param save_interval: number of iterations after which a file is produced with the current results.
-'''

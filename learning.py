@@ -33,15 +33,15 @@ from sklearn_crfsuite import metrics
 from collections import Counter
 
 # CLUSTERING 
-import matplotlib  
-matplotlib.use('TkAgg')   
-import matplotlib.pyplot as plt  
-from matplotlib.colors import ListedColormap
-from sklearn import metrics
-from sklearn.cluster import KMeans
-from sklearn.datasets import load_digits
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import scale
+#import matplotlib  
+#matplotlib.use('TkAgg')   
+#import matplotlib.pyplot as plt  
+#from matplotlib.colors import ListedColormap
+#from sklearn import metrics
+#from sklearn.cluster import KMeans
+#from sklearn.datasets import load_digits
+#from sklearn.decomposition import PCA
+#from sklearn.preprocessing import scale
 
 # Print options
 np.set_printoptions(suppress=True)
@@ -58,20 +58,20 @@ np.random.seed(1)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
-	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
-	return list_of_files
+    list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
+    return list_of_files
 
 def loaddata(file_name,headerrows=1):
-	sequence_list = []
-	with open(file_name,'rb') as f:
-		reader = csv.reader(f)
-		header = ''
-		for i, row in enumerate(reader):
-			if i <= headerrows-1:
-				header = list(row)
-				continue
-			sequence_list.append(list(row))
-	return sequence_list
+    sequence_list = []
+    with open(file_name,'rb') as f:
+        reader = csv.reader(f)
+        header = ''
+        for i, row in enumerate(reader):
+            if i <= headerrows-1:
+                header = list(row)
+                continue
+            sequence_list.append(list(row))
+    return sequence_list
 
 
 def loadrawdata(file_name,headerrows=1):
@@ -82,16 +82,16 @@ def loadrawdata(file_name,headerrows=1):
         for i, row in enumerate(reader):
             if i <= headerrows-1:
                 header.append(list(row))
-			else:
-            	sequence_list.append(list(row))
-		print header
+            else:
+                sequence_list.append(list(row))
+        print header
     return sequence_list,header
 
 
 def load_q_data(no_lable_vs_lable):
-	non_label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/NonSmoking/*'
-	label_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking/*'
-	testing_directory = '/Users/victorbergelin/Repo/Exjobb/Code/Data/TestingData/Smoking/*'
+	non_label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/NonSmoking/*'
+	label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/Smoking/*'
+	testing_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/*'
 	# load lables
 	list_of_files = getfilelist(label_directory)
 	lable_data = [loaddata(file_path) for file_path in list_of_files]
@@ -101,6 +101,9 @@ def load_q_data(no_lable_vs_lable):
 	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
 	random.shuffle(non_lable_data)
 	# count content
+	if len(lable_data)==0 or len(non_lable_data)==0:
+		print("no data found, quiting")
+		quit()
 	non_lable_fraction = float(sum(len(x) for x in lable_data))/float(sum(len(x) for x in non_lable_data))
 	conversion_fraction = non_lable_fraction/no_lable_vs_lable
 	print "Data filter:" 
@@ -114,7 +117,21 @@ def load_q_data(no_lable_vs_lable):
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
 
-# LOAD RAW DATA:
+def loadtestdata(dir_or_file, window_length,sequence_length):
+	list_of_files = getfilelist(dir_or_file)
+	testing_data = [loaddata(file_path) for file_path in list_of_files]
+	random.shuffle(testing_data)
+	x_list = []
+	for sequence in testing_data:
+		nrsequences = int(len(sequence) / window_length)
+		if nrsequences == 0:
+			nrsequences = 1
+		for i in range(nrsequences):
+			x_list.append(np.vstack(sequence[i*window_length:(i+1)*window_length-1]).astype(np.float)[:,[5,6,7,9,10]])
+	norm_sequences = normalize_test(sequences,normalization_constants)
+	X_T,y_T = seq2seqfeatures(norm_sequences, labels, sequence_length, True)
+	return X_T
+
 
 """
 
@@ -125,7 +142,7 @@ Firmware Version: 1.81
 UUID: AQL441200KG
 Sampling Rate: 4
 Start Time: 2014-09-11 08:06:19 Offset:-04
-Time,Z-axis,Y-axis,X-axis,Battery,∞Celsius,EDA(uS),Event
+Time,Z-axis,Y-axis,X-axis,Battery,Celsius,EDA(uS),Event
 ---------------------------------------------------------
 08:06:19.000,0.450,0.430,-0.660,-1,42.000,1.100,0
 
@@ -141,57 +158,31 @@ Label,sub_nr,sub_log,sub_phase,sub_datenum,sub_z,sub_y,sub_x,sub_battery,sub_tem
 
 """
 
-filepath='/Users/victorbergelin/Repo/exjobb/Code/Data/Rawdataimport'
-
-
-
 def load_raw_data(filepath):
-# 1. läsa in fil eller filer från mapp
-# Hur formateras filerna från csv export?
-list_of_markers = getfilelist(filepath+'/markers*')
-list_of_logs = getfilelist(filepath+'/LOG*')
-# 1.1 Läsa CSV m. ts
-marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
-log_data_headers = [loadrawdata(file_path,8) for file_path in list_of_logs]
+	# Hur formateras filerna fran csv export?
+	list_of_markers = getfilelist(filepath+'/markers*')
+	list_of_logs = getfilelist(filepath+'/LOG*')
+	# 1.1 Lasa CSV m. ts
+	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
+	log_data_headers = [loadrawdata(file_path,8) for file_path in list_of_logs]
 
-# Extract time information from headers:
+	# Extract time information from headers:
 
-# 1. markers:
-for markers,headers in marker_data_headers:
-    print headers
-
-
-# 2. logs:
-for datasets,headers in log_data_headers:
-	print headers
-	
+	# 1. markers:
+	for markers,headers in marker_data_headers:
+		print headers
 
 
-
-
-
-# 1.2 Läsa markers
-
-
-
-# 1.3 Create label baseline
-
-# 1.4 Fill labels from hyper parameter parameters
-
-# 2. 
-
-# 3. 
-#
+	# 2. logs:
+	for datasets,headers in log_data_headers:
+		print headers
+		
+	# 1.2 Lasa markers
+	# 1.3 Create label baseline
+	# 1.4 Fill labels from hyper parameter parameters
+	# 2. 
+	# 3. 
 	pass
-
-
-
-
-
-
-
-
-
 
 # DATA HANDLER FUNCTIONS
 # New data seq
@@ -199,12 +190,12 @@ def data2seq(training_data,window_length):
 	y_label = []
 	x_list = []
 	for sequence in training_data:
-        # extract windows
+		# extract windows
 		nrsequences = int(len(sequence) / window_length)
 		if nrsequences == 0:
 			nrsequences = 1
 		for i in range(nrsequences):
-			x_list.append(np.vstack(sequence[i*window_length:(i+1)*window_length-1]).astype(np.float)[:,[5,6,7,9,10]])
+			x_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[5,6,7,9,10]])
 			y_label.append(int(sequence[0][0]))
 	return x_list,y_label
 
@@ -226,6 +217,18 @@ def normalize_train(sequences):
 		normalized_sequences.append(np.array(temp_seq,dtype=float))
 	return [normalized_seq.T for normalized_seq in normalized_sequences],normalization_constants
 
+def normalize_test(sequences,normalization_constants):
+	mean = normalization_constants[0]
+	maxval = normalization_constants[1]
+	col_range = range(len(sequences[0][0]))
+	normalized_sequences = []
+	for seq in sequences:
+		temp_seq = []
+		for col in col_range:
+			temp_seq.extend([(seq.T[col]-mean[col])/(maxval[col]-mean[col])])
+		normalized_sequences.append(np.array(temp_seq,dtype=float))
+	return [normalized_seq.T for normalized_seq in normalized_sequences]
+
 
 def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 	x_train = []
@@ -237,30 +240,13 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 		features = []
 		label_set = []
 		for i in range(data_points):
-			temp = extractQfeatures(seq[i*feature_length:(i+1)*feature_length-1],export_to_list_or_dict)
+			temp = extractQfeatures(seq[int(i*feature_length):int((i+1)*feature_length-1)],export_to_list_or_dict)
 			if len(temp)>0:
 				features.append(temp)
 				label_set.append(str(label))
 		x_train.append(features)
 		y_train.append(label_set)
 	return x_train,y_train
-
-"""
-
-feature_data = 
-array([[ -0.93,   0.48,   0.13,  33.7 ,   1.29],
-	   [ -0.98,   0.34,   0.46,  33.7 ,   1.3 ],
-	   [ -0.91,   0.21,   0.43,  33.7 ,   1.32],
-	   [ -0.94,   0.1 ,   0.42,  33.7 ,   1.3 ],
-	   [ -0.91,   0.03,   0.39,  33.7 ,   1.31],
-	   [ -0.88,  -0.1 ,   0.28,  33.7 ,   1.31],
-	   [ -0.95,  -0.04,   0.32,  33.7 ,   1.31],
-	   [ -0.97,  -0.05,   0.36,  33.7 ,   1.33],
-	   [ -0.96,  -0.08,   0.65,  33.7 ,   1.31],
-	   [ -1.02,  -0.05,   0.43,  33.7 ,   1.31],
-	   [ -0.98,  -0.09,   0.26,  33.7 ,   1.32]])
-
-"""
 
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
@@ -274,14 +260,14 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	freq_mean= np.mean(freq_space,0)
 	freq_var = np.std(feature_data,0)
 	# Square sum of any over 75% or under 25%
-	p25 = np.percentile(np.abs(feature_data),25,0)
-	p75 = np.percentile(np.abs(feature_data),75,0)
-	p25_feat = ((feature_data*(np.abs(feature_data)<p25))**2).sum(axis=0)
-	p75_feat = ((feature_data*(np.abs(feature_data)>p75))**2).sum(axis=0)
-	p25 = np.percentile(np.abs(freq_space),25,0)
-	p75 = np.percentile(np.abs(freq_space),75,0)
-	p25_freq = ((freq_space*(np.abs(freq_space)<p25))**2).sum(axis=0)
-	p75_freq = ((freq_space*(np.abs(freq_space)>p75))**2).sum(axis=0)
+	#p25 = np.percentile(np.abs(feature_data),25,0)
+	#p75 = np.percentile(np.abs(feature_data),75,0)
+	#p25_feat = ((feature_data*(np.abs(feature_data)<p25))**2).sum(axis=0)
+	#p75_feat = ((feature_data*(np.abs(feature_data)>p75))**2).sum(axis=0)
+	#p25 = np.percentile(np.abs(freq_space),25,0)
+	#p75 = np.percentile(np.abs(freq_space),75,0)
+	#p25_freq = ((freq_space*(np.abs(freq_space)<p25))**2).sum(axis=0)
+	#p75_freq = ((freq_space*(np.abs(freq_space)>p75))**2).sum(axis=0)
 	# Sum difference, volatility 
 	diff_feat = sum(np.abs(np.diff(feature_data.transpose()).transpose()))
 	diff_freq = sum(np.abs(np.diff(freq_space.transpose()).transpose()))
@@ -315,25 +301,25 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	return feature_seq
 
 # 25 % energy
-	# 75 %
-	# 10 %
-	# fluctuations, diff
-	## Frequency: fft
-	# sum of frequency in bands: 0-1 hz, 1-3, 3-10 hzb, 10+ hz
-	## Nr peaks: 
-	# avg peak width
-	# apply features
+# 75 %
+# 10 %
+# fluctuations, diff
+## Frequency: fft
+# sum of frequency in bands: 0-1 hz, 1-3, 3-10 hzb, 10+ hz
+## Nr peaks: 
+# avg peak width
+# apply features
 
 def training(X_train, y_train):
 	# pycrfsuite.ItemSequence
 	# %%time
 	crf = sklearn_crfsuite.CRF(
-			algorithm='lbfgs',
-			c1=0.1,
-			c2=0.1,
-			max_iterations=100,
-			all_possible_transitions=True
-			)
+		algorithm='lbfgs',
+		c1=0.1,
+		c2=0.1,
+		max_iterations=100,
+		all_possible_transitions=True
+		)
 	crf.fit(X_train, y_train)
 	return crf
 
@@ -372,6 +358,7 @@ def testing(crf,X_test,y_test):
 	y_pred = crf.predict(X_test)
 	sorted_labels = sorted(labels,key=lambda name: (name[1:], name[0]))
 	print(metrics.flat_classification_report(y_test, y_pred, labels=sorted_labels, digits=3))
+	return metrics.flat_accuracy_score(y_test, y_pred, labels=sorted_labels)
 
 def shuffle_and_cut(X,y,training_vs_testing):
 	X, y = shuffle(X, y, random_state=0)
@@ -381,7 +368,7 @@ def shuffle_and_cut(X,y,training_vs_testing):
 	y_train = y[:cut_id]
 	y_test = y[cut_id:]
 	return X_train,X_test,y_train,y_test
-	
+
 # FEATURE DATA: 
 def print_state_features(state_features):
 	for (attr, label), weight in state_features:
@@ -440,43 +427,70 @@ def bench_k_means(estimator, name, X, y, sample_size):
 
 """
 Data filter:
-	Slicing to 18.0511563087% of non lable data
-				 precision    recall  f1-score   support
+Slicing to 18.0511563087% of non lable data
+             precision    recall  f1-score   support
 
-			0      0.851     0.914     0.881     18441
-			1      0.870     0.783     0.824     13590
-  avg / total      0.859     0.858     0.857     32031
+        0      0.851     0.914     0.881     18441
+        1      0.870     0.783     0.824     13590
+avg / total      0.859     0.858     0.857     32031
 
 """
-def run_crf():
+def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
+	# Parameters
+	sequence_length_sec = inputvect[0]
+	no_lable_vs_lable = inputvect[1]
+	training_vs_testing = inputvect[2]
+	sub_seq_length_sec = inputvect[3]
+	feature_length = sub_seq_length_sec*data_frequency
+	training_data = load_q_data(no_lable_vs_lable)
+	sequences,labels = data2seq(training_data,int(sequence_length_sec*data_frequency))
+	norm_sequences,normalization_constants = normalize_train(sequences)
+	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+	# Randomize and split:
+	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+	# Train algorithm:
+	crf = training(X_train, y_train)
+	#crf = trainingRandomized(X_train, y_train)
+    # Test algorithm:
+	return testing(crf,X_test,y_test)
+    
 
-# Parameters
-sequence_length_sec = 30
-no_lable_vs_lable = 0.7
-training_vs_testing = 0.8
-sub_seq_length_sec = 3
-data_frequency = 4
-feature_length = sub_seq_length_sec*data_frequency
 
-training_data = load_q_data(no_lable_vs_lable)
-sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
-norm_sequences,normalization_constants = normalize_train(sequences)
-X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-# Randomize and split:
-X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-# Train algorithm:
-crf = training(X_train, y_train)
+def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
+    sequence_length_sec = 30
+    no_lable_vs_lable = 0.7
+    training_vs_testing = 0.8
+    sub_seq_length_sec = 3
+    data_frequency = 4
+    feature_length = sub_seq_length_sec*data_frequency
+    training_data = load_q_data(no_lable_vs_lable)
+    sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
+    norm_sequences,normalization_constants = normalize_train(sequences)
+    X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+    # Randomize and split:
+    X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+    # Train algorithm:
+    crf = training(X_train, y_train)
+    crf = trainingRandomized(X_train, y_train)
+    # Test algorithm:
+    testing(crf,X_test,y_test)
+    print("HEJ")
 
-crf = trainingRandomized(X_train, y_train)
-# Test algorithm:
-testing(crf,X_test,y_test)
+    X_test_real = loadtestdata(test_data_files,sequence_length_sec*data_frequency,sub_seq_length_sec*data_frequency)
+
+
+
 
 def main():
 	"""Main entry point for the script."""
-	# clustering()	
-	run_crf()
+	a = run_crf()
 	return
+#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
+#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
+#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
+#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
+#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
 
 if __name__ == '__main__':
-	sys.exit(main())
+    sys.exit(main())
 
