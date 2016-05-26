@@ -55,6 +55,7 @@ data_frequency = 4
 feature_length = sub_seq_length_sec*data_frequency
 
 np.random.seed(1)
+random.seed(1)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
@@ -358,7 +359,7 @@ def testing(crf,X_test,y_test):
 	y_pred = crf.predict(X_test)
 	sorted_labels = sorted(labels,key=lambda name: (name[1:], name[0]))
 	print(metrics.flat_classification_report(y_test, y_pred, labels=sorted_labels, digits=3))
-	return metrics.flat_accuracy_score(y_test, y_pred, labels=sorted_labels)
+	return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 
 def shuffle_and_cut(X,y,training_vs_testing):
 	X, y = shuffle(X, y, random_state=0)
@@ -474,8 +475,6 @@ def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Cod
     crf = trainingRandomized(X_train, y_train)
     # Test algorithm:
     testing(crf,X_test,y_test)
-    print("HEJ")
-
     X_test_real = loadtestdata(test_data_files,sequence_length_sec*data_frequency,sub_seq_length_sec*data_frequency)
 
 
@@ -483,7 +482,7 @@ def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Cod
 
 def main():
 	"""Main entry point for the script."""
-	a = run_crf()
+	run_crf()
 	return
 #    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
 #    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
