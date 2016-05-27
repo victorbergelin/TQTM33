@@ -76,30 +76,23 @@ def loadrawdata(file_name,headerrows=1):
 
 
 def load_q_data(no_lable_vs_lable):
-	
 	# standard directory: 
 	non_label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/NonSmoking/*'
 	label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/Smoking/*'
 	testing_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/*'
 	# load lables
 	list_of_files = getfilelist(label_directory)
-	
 	# load lables
 	list_of_files = getfilelist(label_directory)
-
 	# LOAD DATA for file
 	lable_data = [loaddata(file_path) for file_path in list_of_files]
-	
 	# lable_data_train
 	# lable_data_test
-
-
 	random.shuffle(lable_data)
 	# load non lables
 	list_of_files = getfilelist(non_label_directory)
 	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
 	random.shuffle(non_lable_data)
-	
 	# count content
 	if len(lable_data)==0 or len(non_lable_data)==0:
 		print("no data found, quiting")
@@ -119,30 +112,23 @@ def load_q_data(no_lable_vs_lable):
 
 
 def load_q_data_subj(no_lable_vs_lable, train_subjects, test_subjects):
-	
 	# standard directory: 
 	non_label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/NonSmoking/*'
 	label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/Smoking/*'
 	testing_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/*'
 	# load lables
 	list_of_files = getfilelist(label_directory)
-	
 	# load lables
 	list_of_files = getfilelist(label_directory)
-
 	# LOAD DATA for file
 	lable_data = [loaddata(file_path) for file_path in list_of_files]
-	
-	lable_data_train
-	lable_data_test
-
-
+	#lable_data_train
+	#lable_data_test
 	random.shuffle(lable_data)
 	# load non lables
 	list_of_files = getfilelist(non_label_directory)
 	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
 	random.shuffle(non_lable_data)
-	
 	# count content
 	if len(lable_data)==0 or len(non_lable_data)==0:
 		print("no data found, quiting")
@@ -404,8 +390,9 @@ def testing(crf,X_test,y_test):
 	print("Results:")
 	labels = list(crf.classes_)
 	y_pred = crf.predict(X_test)
-	sorted_labels = sorted(labels,key=lambda name: (name[1:], name[0]))
-	print(metrics.flat_classification_report(y_test, y_pred, labels=sorted_labels, digits=3))
+	sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
+	
+	print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
 	return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 
 def shuffle_and_cut(X,y,training_vs_testing):
@@ -426,7 +413,6 @@ def print_state_features(state_features):
 		print("\nTop negative:")
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
 
-
 """
 Data filter:
 Slicing to 18.0511563087% of non lable data
@@ -437,6 +423,7 @@ Slicing to 18.0511563087% of non lable data
 avg / total      0.859     0.858     0.857     32031
 
 """
+
 def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	# Parameters
 	sequence_length_sec = inputvect[0]
@@ -455,44 +442,57 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	#crf = trainingRandomized(X_train, y_train)
     # Test algorithm:
 	return testing(crf,X_test,y_test)
-    
-
 
 def shuffle_and_cut_subj(X,y,training_vs_testing,train_subj,test_subj,info_list):
 	X, y = shuffle(X, y, random_state=0)
-	
+
+	X_train = []
+	Y_train = []
+	X_test = []
+	Y_test = []
+
 	# X is list of list of dirs
-	user_ids =  [info_row[1] for sublist in info_list for info_row in sublist]
-	print user_ids
 
-	for i, user_id in enumerate(user_ids):
-		if user_id in train_subj:
-			X_train = 
-			y_tests = 
+	# user_ids =  [info_row[1] for sublist in info_list for info_row in sublist]
+	user_ids =  [info_row[0][1] for info_row in info_list]
+	try:
+		for i, user_id in enumerate(user_ids):
 
-	cut_id = int(len(X)*training_vs_testing)
-	X_train = X[:cut_id]
-	X_test = X[cut_id:]
-	y_train = y[:cut_id]
-	y_test = y[cut_id:]
-	return X_train,X_test,y_train,y_test
+			if i == len(user_ids): 
+				print 'Index warnig'
+				continue
+			if str(int(user_id)) in train_subj:
+				X_train.append(X[i])
+				Y_train.append(y[i])
+			elif str(int(user_id)) in test_subj:
+				X_test.append(X[i])
+				Y_test.append(y[i])
+			else:
+				print str(int(user_id))
+
+	except:
+		print("Unexpected error:", sys.exc_info()[0])
+
+	return X_train,X_test,Y_train,Y_test
 
 def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_test=[]):
-    # Parameters
-    sequence_length_sec = inputvect[0]
-    no_lable_vs_lable = inputvect[1]
-    training_vs_testing = inputvect[2]
-    sub_seq_length_sec = inputvect[3]
-    feature_length = sub_seq_length_sec*data_frequency
-    training_data = load_q_data(no_lable_vs_lable)
-    sequences,labels,info_list = data2seq(training_data,int(sequence_length_sec*data_frequency))
-    norm_sequences,normalization_constants = normalize_train(sequences)
-    X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-    
-    X_train,X_test,y_train,y_test = shuffle_and_cut_subj(X,y,training_vs_testing,subj_train,subj_test,info_list)
-    crf = training(X_train, y_train)
-    return testing(crf,X_test,y_test)
-
+    # Parameter
+	print "-----------------"
+	print "train: " + str(subj_train)
+	print "test: " + str(subj_test)
+	sequence_length_sec = inputvect[0]
+	no_lable_vs_lable = inputvect[1]
+	training_vs_testing = inputvect[2]
+	sub_seq_length_sec = inputvect[3]
+	feature_length = sub_seq_length_sec*data_frequency
+	training_data = load_q_data(no_lable_vs_lable)
+	sequences,labels,info_list = data2seq(training_data,int(sequence_length_sec*data_frequency))
+	norm_sequences,normalization_constants = normalize_train(sequences)
+	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+	# print "DATA " + str(len(X))
+	X_train,X_test,y_train,y_test = shuffle_and_cut_subj(X,y,training_vs_testing,subj_train,subj_test,info_list)
+	crf = training(X_train, y_train)
+	return testing(crf,X_test,y_test)
 
 def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
     sequence_length_sec = 30
@@ -517,11 +517,16 @@ def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Cod
 
 def main():
 	"""Main entry point for the script."""
-	# run_crf()
-	run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
-	#run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]), train_data_files = [str(x)+'/*' for x in range(100,110)], test_data_files = ['110*'])
+	subjects = ['100','101','102','103','104','106','107','108','109','110']
+	for subject in subjects:
+		subj_train = [x for x in subjects if not x in subject]
+		subj_test = subject
+		run_crf_subjects(subj_train=subj_train,subj_test=subj_test)
 
 	return
+	# run_crf()
+	# run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
+	
 #    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
 #    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
 #    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
