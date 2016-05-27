@@ -477,9 +477,7 @@ def shuffle_and_cut_subj(X,y,training_vs_testing,train_subj,test_subj,info_list)
 
 def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_test=[]):
     # Parameter
-	print "-----------------"
-	print "train: " + str(subj_train)
-	print "test: " + str(subj_test)
+
 	sequence_length_sec = inputvect[0]
 	no_lable_vs_lable = inputvect[1]
 	training_vs_testing = inputvect[2]
@@ -490,9 +488,16 @@ def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_
 	norm_sequences,normalization_constants = normalize_train(sequences)
 	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
 	# print "DATA " + str(len(X))
-	X_train,X_test,y_train,y_test = shuffle_and_cut_subj(X,y,training_vs_testing,subj_train,subj_test,info_list)
-	crf = training(X_train, y_train)
-	return testing(crf,X_test,y_test)
+	subjects = ['100','101','102','103','104','106','107','108','109','110']
+	for subject in subjects:
+		subj_train = [x for x in subjects if not x in subject]
+		subj_test = subject
+		print "-----------------"
+		print "train: " + str(subj_train)
+		print "test: " + str(subj_test)
+		X_train,X_test,y_train,y_test = shuffle_and_cut_subj(X,y,training_vs_testing,subj_train,subj_test,info_list)
+		crf = training(X_train, y_train)
+		testing(crf,X_test,y_test)
 
 def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
     sequence_length_sec = 30
