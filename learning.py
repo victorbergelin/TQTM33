@@ -192,53 +192,45 @@ Time,Z-axis,Y-axis,X-axis,Battery,Celsius,EDA(uS),Event
 filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
 def load_raw_data(filepath):
 
-# *** Hur formateras filerna fran csv export?
-list_of_markers = getfilelist(filepath+'markers*')
-marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
+	# *** Hur formateras filerna fran csv export?
+	list_of_markers = getfilelist(filepath+'markers*')
+	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
 
-data = []
-marker_data = []
-marker_set = []
+	data = []
+	marker_data = []
+	marker_set = []
 
-for files in marker_data_headers:
-	file_marks = []
-	timestamps = []
-	marker_set.append(mark[0])
-	for mark in [mark for mark in files[0] if mark]:
-		file_marks.append(mark[3])
-		s = mark[0][11:]+"-"+mark[3]
-		timestamps.append(time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()))
-	marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
+	for files in marker_data_headers:
+		file_marks = []
+		timestamps = []
+		marker_set.append(mark[0])
+		for mark in [mark for mark in files[0] if mark]:
+			file_marks.append(mark[3])
+			s = mark[0][11:]+"-"+mark[3]
+			timestamps.append(time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()))
+		marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
 
-all_data = []
-for i, set_name in enumerate(marker_set):
-	log = ""
-	ii = 0
-	try:
-		log_data = loadrawdata(getfilelist(filepath+set_name+'*')[0],8)
-		for log in log_data[0]:
-			timestr = time.mktime(datetime.datetime.strptime(set_name[11:]+"-"+log[0], "%Y_%m_%d-%H:%M:%S.%f").timetuple())
-			log_row = [set_name[:10]] + [timestr] + [set_name[11:]] + log
-			all_data.append(log_row)
-		ii = ii + 1
-	except:
-		print "error:"
-		print set_name[11:]+"-"+log[0] + " " + str(ii)
-
-
-
-# Map labels with data:
-# ------------------
-
-#1. Convert to timestamp
-time.mktime(datetime.datetime.strptime(s, "%d/%m/%Y").timetuple())
-#2. Match log with data and find matching time or if not matching
-
-
-
-
-
-# ------------------
+	all_data = []
+	for i, set_name in enumerate(marker_set):
+		log = ""
+		ii = 0
+		try:
+			log_matrix = []
+			log_data = loadrawdata(getfilelist(filepath+set_name+'*')[0],8)
+			for log in log_data[0]:
+				timestr = time.mktime(datetime.datetime.strptime(set_name[11:]+"-"+log[0], "%Y_%m_%d-%H:%M:%S.%f").timetuple())
+				log_row = [set_name[:10]] + [0]  + [timestr] + [set_name[11:]] + log
+				log_matrix.append(log_row)
+			marker_timestamps = marker_data[i][4]
+			log_timestaps = [log[2] for log in log_matrix]
+			for marker in marker_timestamps:
+				index = np.argmin(np.abs(np.subtract(marker,log_timestaps)))
+				log_matrix[index][1] = 1 # *** MAKE THIS LABEL MORE DYNAMIC AND GENERALL
+			all_data.append(log_matrix)
+			ii = ii + 1
+		except:
+			print "error at:"
+			print set_name[11:]+"-"+log[0] + " " + str(ii)
 
 
 
