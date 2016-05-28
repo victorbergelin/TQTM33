@@ -16,6 +16,7 @@ from numpy.fft import fft
 import glob
 import random
 from time import time
+import datetime
 
 import scipy.stats
 from sklearn.metrics import make_scorer
@@ -71,7 +72,7 @@ def loadrawdata(file_name,headerrows=1):
 				header.append(list(row))
 			else:
 				sequence_list.append(list(row))
-		print header
+		# print header
 	return sequence_list,header
 
 
@@ -176,7 +177,6 @@ def loadsubjectdata(train_dir_or_file,test_dir_or_file, window_length,sequence_l
 	return X_Train,Y_Train,X_Test,Y_Test
 
 """
-
 PRIMARY:
 File Exported by Q - (c) 2009 Affectiva Inc.
 File Version: 1.01
@@ -187,43 +187,72 @@ Start Time: 2014-09-11 08:06:19 Offset:-04
 Time,Z-axis,Y-axis,X-axis,Battery,Celsius,EDA(uS),Event
 ---------------------------------------------------------
 08:06:19.000,0.450,0.430,-0.660,-1,42.000,1.100,0
-
-
-OLD: 
-head -n 5 /Users/victorbergelin/Repo/Exjobb/Code/Data/TrainingData/Smoking/100_1.csv 
-Label,sub_nr,sub_log,sub_phase,sub_datenum,sub_z,sub_y,sub_x,sub_battery,sub_temp,sub_EDA
-1,100,1,2,1410514767,-0.68,0.47,-0.14,-1,34.1,0.769
-1,100,1,2,1410514767.25,-0.65,0.67,-0.27,-1,34.1,0.785
-1,100,1,2,1410514767.5,-0.59,0.6,-0.33,-1,34.1,0.803
-1,100,1,2,1410514767.75,-0.61,0.76,-0.53,-1,34.1,0.824
-
-
 """
 
+filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
 def load_raw_data(filepath):
-	# Hur formateras filerna fran csv export?
-	list_of_markers = getfilelist(filepath+'/markers*')
-	list_of_logs = getfilelist(filepath+'/LOG*')
-	# 1.1 Lasa CSV m. ts
-	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
-	log_data_headers = [loadrawdata(file_path,8) for file_path in list_of_logs]
 
-	# Extract time information from headers:
+# *** Hur formateras filerna fran csv export?
+list_of_markers = getfilelist(filepath+'markers*')
+marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
 
-	# 1. markers:
-	for markers,headers in marker_data_headers:
-		print headers
+data = []
+marker_data = []
+marker_set = []
+
+for files in marker_data_headers:
+	file_marks = []
+	timestamps = []
+	marker_set.append(mark[0])
+	for mark in [mark for mark in files[0] if mark]:
+		file_marks.append(mark[3])
+		s = mark[0][11:]+"-"+mark[3]
+		timestamps.append(time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()))
+	marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
+
+all_data = []
+for i, set_name in enumerate(marker_set):
+	log = ""
+	ii = 0
+	try:
+		log_data = loadrawdata(getfilelist(filepath+set_name+'*')[0],8)
+		for log in log_data[0]:
+			timestr = time.mktime(datetime.datetime.strptime(set_name[11:]+"-"+log[0], "%Y_%m_%d-%H:%M:%S.%f").timetuple())
+			log_row = [set_name[:10]] + [timestr] + [set_name[11:]] + log
+			all_data.append(log_row)
+		ii = ii + 1
+	except:
+		print "error:"
+		print set_name[11:]+"-"+log[0] + " " + str(ii)
 
 
-	# 2. logs:
-	for datasets,headers in log_data_headers:
-		print headers
-		
-	# 1.2 Lasa markers
-	# 1.3 Create label baseline
-	# 1.4 Fill labels from hyper parameter parameters
-	# 2. 
-	# 3. 
+
+# Map labels with data:
+# ------------------
+
+#1. Convert to timestamp
+time.mktime(datetime.datetime.strptime(s, "%d/%m/%Y").timetuple())
+#2. Match log with data and find matching time or if not matching
+
+
+
+
+
+# ------------------
+
+
+
+# logs:
+headers = log_data_headers[0][1]
+data_date = headers[5][0][12:22].replace("-","_")
+
+
+
+for logs in [log for log in log_data_headers if log]:
+	data.append([data_date] + logs)
+
+# Läsa formatet för datumen -> unixtime?
+
 	pass
 
 # DATA HANDLER FUNCTIONS
@@ -523,12 +552,8 @@ def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Cod
 def main():
 	"""Main entry point for the script."""
 	subjects = ['100','101','102','103','104','106','107','108','109','110']
-	for subject in subjects:
-		subj_train = [x for x in subjects if not x in subject]
-		subj_test = subject
-		run_crf_subjects(subj_train=subj_train,subj_test=subj_test)
+	run_crf_subjects()
 
-	return
 	# run_crf()
 	# run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
 	
