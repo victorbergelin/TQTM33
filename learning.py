@@ -15,7 +15,7 @@ import numpy as np
 from numpy.fft import fft
 import glob
 import random
-from time import time
+import time
 import datetime
 
 import scipy.stats
