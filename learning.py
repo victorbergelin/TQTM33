@@ -191,25 +191,21 @@ Time,Z-axis,Y-axis,X-axis,Battery,Celsius,EDA(uS),Event
 
 filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
 def load_raw_data(filepath):
-
 	# *** Hur formateras filerna fran csv export?
 	list_of_markers = getfilelist(filepath+'markers*')
 	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
-
 	data = []
 	marker_data = []
 	marker_set = []
-
 	for files in marker_data_headers:
 		file_marks = []
 		timestamps = []
-		marker_set.append(mark[0])
+		marker_set.append(files[0][0][0])
 		for mark in [mark for mark in files[0] if mark]:
 			file_marks.append(mark[3])
 			s = mark[0][11:]+"-"+mark[3]
 			timestamps.append(time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()))
 		marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
-
 	all_data = []
 	for i, set_name in enumerate(marker_set):
 		log = ""
@@ -231,21 +227,9 @@ def load_raw_data(filepath):
 		except:
 			print "error at:"
 			print set_name[11:]+"-"+log[0] + " " + str(ii)
+	return all_data
 
 
-
-# logs:
-headers = log_data_headers[0][1]
-data_date = headers[5][0][12:22].replace("-","_")
-
-
-
-for logs in [log for log in log_data_headers if log]:
-	data.append([data_date] + logs)
-
-# Läsa formatet för datumen -> unixtime?
-
-	pass
 
 # DATA HANDLER FUNCTIONS
 # New data seq
