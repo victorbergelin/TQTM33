@@ -38,8 +38,6 @@ np.set_printoptions(precision=2)
 
 # Parameters
 
-
-
 # Config
 data_frequency = 4
 np.random.seed(1)
@@ -47,8 +45,8 @@ random.seed(1)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
-    list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
-    return list_of_files
+	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
+	return list_of_files
 
 def loaddata(file_name,headerrows=1):
 	sequence_list = []
@@ -111,7 +109,7 @@ def load_q_data(no_lable_vs_lable):
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
 
-
+"""
 def load_q_data_subj(no_lable_vs_lable, train_subjects, test_subjects):
 	# standard directory: 
 	non_label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/NonSmoking/*'
@@ -146,52 +144,9 @@ def load_q_data_subj(no_lable_vs_lable, train_subjects, test_subjects):
 		training_data = lable_data[:lable_cut_id] + non_lable_data
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
-
-def loadsubjectdata(train_dir_or_file,test_dir_or_file, window_length,sequence_length):
-	root_dir = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/Subjects/'
-	file_list = [root_dir + file_search for file_search in train_dir_or_file]
-	
-	list_of_files = [getfilelist(file_path) for file_path in file_list]
-	data = [loaddata(file_path) for sublist in list_of_files for file_path in sublist]
-	random.shuffle(data)
-	print str(len(data)) + " records of labeled data imported for training"
-	print len(data[0])
-	sequences,labels = data2seq(data,int(sequence_length_sec*data_frequency))
-
-	
-	norm_sequences = normalize_test(sequences,normalization_constants)
-	X_Train,Y_Train = seq2seqfeatures(norm_sequences, labels, sequence_length, True)
-	X_Test = []
-	list_of_files = getfilelist(test_dir_or_file)
-	data = [loaddata(file_path) for file_path in list_of_files]
-	random.shuffle(data)
-	x_list = []
-	for sequence in data:
-		nrsequences = int(len(sequence) / window_length)
-		if nrsequences == 0:
-			nrsequences = 1
-		for i in range(nrsequences):
-			x_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[5,6,7,9,10]])
-	norm_sequences = normalize_test(sequences,normalization_constants)
-	X_Test,Y_Test = seq2seqfeatures(norm_sequences, labels, sequence_length, True)
-	return X_Train,Y_Train,X_Test,Y_Test
-
-"""
-PRIMARY:
-File Exported by Q - (c) 2009 Affectiva Inc.
-File Version: 1.01
-Firmware Version: 1.81
-UUID: AQL441200KG
-Sampling Rate: 4
-Start Time: 2014-09-11 08:06:19 Offset:-04
-Time,Z-axis,Y-axis,X-axis,Battery,Celsius,EDA(uS),Event
----------------------------------------------------------
-08:06:19.000,0.450,0.430,-0.660,-1,42.000,1.100,0
 """
 
-filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
-def load_raw_data(filepath):
-	# *** Hur formateras filerna fran csv export?
+def load_raw_data(filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'):
 	list_of_markers = getfilelist(filepath+'markers*')
 	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
 	data = []
@@ -215,29 +170,148 @@ def load_raw_data(filepath):
 			log_data = loadrawdata(getfilelist(filepath+set_name+'*')[0],8)
 			for log in log_data[0]:
 				timestr = time.mktime(datetime.datetime.strptime(set_name[11:]+"-"+log[0], "%Y_%m_%d-%H:%M:%S.%f").timetuple())
-				log_row = [set_name[:10]] + [0]  + [timestr] + [set_name[11:]] + log
+				log_row = [i] + [set_name[:10]] + [0]  + [timestr] + [set_name[11:]] + log
 				log_matrix.append(log_row)
 			marker_timestamps = marker_data[i][4]
-			log_timestaps = [log[2] for log in log_matrix]
+			log_timestaps = [log[3] for log in log_matrix]
 			for marker in marker_timestamps:
 				index = np.argmin(np.abs(np.subtract(marker,log_timestaps)))
-				log_matrix[index][1] = 1 # *** MAKE THIS LABEL MORE DYNAMIC AND GENERALL
+				log_matrix[index][2] = 1 # *** MAKE THIS LABEL MORE DYNAMIC AND GENERALL
 			all_data.append(log_matrix)
-			ii = ii + 1
 		except:
 			print "error at:"
-			print set_name[11:]+"-"+log[0] + " " + str(ii)
+			print set_name[11:]+"-"+log + " " + str(ii)
 	return all_data
 
 
+"""
+
+import numpy as np
+import sys
+import learning as lr
+
+inputvect = np.array([30, 0.7, 0.8, 3])
+label_prior={1:[30,600],0:[600,7200]}
+data_frequency = 4
+
+filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
+data = lr.load_raw_data(filepath)
+
+sequence_length_sec = inputvect[0]
+no_lable_vs_lable = inputvect[1]
+training_vs_testing = inputvect[2]
+sub_seq_length_sec = inputvect[3]
+window_length = int(sequence_length_sec*data_frequency)
+feature_length = sub_seq_length_sec*data_frequency
+
+sequences,labels,info_list = lr.data2seq_raw(data,window_length,label_prior)
+
+norm_sequences,normalization_constants = normalize_train(sequences)
+X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+
+"""
+
+def format_raw_data(data, inputvect,label_prior):
+	sequence_length_sec = inputvect[0]
+	no_lable_vs_lable = inputvect[1]
+	training_vs_testing = inputvect[2]
+	sub_seq_length_sec = inputvect[3]
+	window_length = int(sequence_length_sec*data_frequency)
+	feature_length = sub_seq_length_sec*data_frequency
+	sequences,labels,info_list = data2seq_raw(data,window_length,label_prior)
+	norm_sequences,normalization_constants = normalize_train(sequences)
+	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+	return X,y
+
+"""
+def format_raw_data(data, inputvect,label_prior):
+    sequence_length_sec = inputvect[0]
+    no_lable_vs_lable = inputvect[1]
+    training_vs_testing = inputvect[2]
+    sub_seq_length_sec = inputvect[3]
+    feature_length = sub_seq_length_sec*data_frequency
+    #x_list,y_label,info_list = lr.data2seq_raw(data,label_prior,int(sequence_length_sec*data_frequency))
+
+    sequeVnces,labels,info_list = data2seq_raw(data,int(sequence_length_sec*data_frequency),label_prior)
+    norm_sequences,normalization_constants = normalize_train(sequences)
+    X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+    return X,y
+"""
+
+# New data seq
+# import learning as lr
+#  x_list,y_label,info_list = lr.data2seq_raw(data,label_prior,int(sequence_length_sec*data_frequency))
+def data2seq_raw(data,window_length,label_prior):
+	x_list = []
+	y_list = []
+	info_list = []
+	label_length = int(data_frequency * np.mean(label_prior[1])) # Average over min and max time of label
+	label_margin = int(np.diff(label_prior[1]))
+	# data to sequences: use all as one serquence:
+	for files_data in data:
+		labler_iterator = label_length
+		# If sequence [window * i..] have label: 
+		#	Extend label with label_prior
+		window_iterator = 0
+		x_window_list = np.array([])
+		info_window_list = np.array([])
+		y_window_list = np.array([])
+		label = 0
+		for row in files_data:
+			data_row = []
+			# Labeling: should detect time shift between frames? (non continous) ***
+			if row[2] != 0:
+				label = row[2]
+				labler_iterator = 0
+			# MARGIN LABEL HERE ***
+			elif labler_iterator < label_length:
+				labler_iterator += 1
+			else:
+				label = 0
+			# Info list:
+			# Windows: detect time shifts ***
+			if window_iterator < window_length:
+				# raw = [0, 'LOG03_00KG', 0, 1410452087.0, '2014_09_11', '12:14:47.250', '1.350', '0.720', '0.000', '-1', '34.100', '5.598', '0']
+				#print len(x_window_list)
+				#print len(np.hstack(row)[[0,2,3,6,7,9,10,11]].astype(np.float))
+				#print "----"
+				if len(x_window_list)==0:
+					x_window_list = np.hstack(row)[[6,7,8,10,11]].astype(np.float)
+					info_window_list = np.hstack(row)[[0,1,2,3,4,5]]
+				else:
+					x_window_list = np.vstack((x_window_list,np.hstack(row)[[6,7,8,10,11]].astype(np.float)))
+					info_window_list = np.vstack((info_window_list,np.hstack(row)[[0,1,2,3,4,5]]))
+				y_window_list = np.append(y_window_list,label)
+				window_iterator += 1
+
+			else:
+				x_list.append(x_window_list)
+				y_list.append(y_window_list)
+				x_window_list = np.array([])
+				info_window_list = np.array([])
+				y_window_list = np.array([])
+				window_iterator = 0
+	return x_list,y_list,info_list
+
+"""	
+	# extract windows
+	nrsequences = int(len(sequence) / window_length)
+	if nrsequences == 0:
+		nrsequences = 1
+	for i in range(nrsequences):
+		x_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[5,6,7,9,10]])
+		# info_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[0,1,2,3,4]])
+		y_label.append(int(sequence[0][0]))
+pass 
+"""
 
 # DATA HANDLER FUNCTIONS
 # New data seq
-def data2seq(training_data,window_length):
+def data2seq(data,window_length):
 	y_label = []
 	x_list = []
 	info_list = []
-	for sequence in training_data:
+	for sequence in data:
 		# extract windows
 		nrsequences = int(len(sequence) / window_length)
 		if nrsequences == 0:
@@ -248,7 +322,6 @@ def data2seq(training_data,window_length):
 			y_label.append(int(sequence[0][0]))
 	return x_list,y_label,info_list
 
-
 # normalize to zero mean, unit variance
 def normalize_train(sequences):
 	mean = []
@@ -256,13 +329,16 @@ def normalize_train(sequences):
 	col_range = range(len(sequences[0][0]));
 	for col in col_range:
 		mean.append(np.mean([seq.T[col] for seq in sequences]))
-		variance.append(np.var([seq.T[col] for seq in sequences]))
+		variance.append(np.max([seq.T[col] for seq in sequences]))
 	normalization_constants = (np.array(mean),np.array(variance))
 	normalized_sequences = []
 	for seq in sequences:
 		temp_seq = []
 		for col in col_range:
-			temp_seq.extend([(seq.T[col]-mean[col])/variance[col]])
+			if variance[col]==0:
+				temp_seq.extend([(seq.T[col]-mean[col])])
+			else:
+				temp_seq.extend([(seq.T[col]-mean[col])/variance[col]])
 		normalized_sequences.append(np.array(temp_seq,dtype=float))
 	return [normalized_seq.T for normalized_seq in normalized_sequences],normalization_constants
 
@@ -277,7 +353,6 @@ def normalize_test(sequences,normalization_constants):
 			temp_seq.extend([(seq.T[col]-mean[col])/(maxval[col]-mean[col])])
 		normalized_sequences.append(np.array(temp_seq,dtype=float))
 	return [normalized_seq.T for normalized_seq in normalized_sequences]
-
 
 def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 	x_train = []
@@ -296,7 +371,6 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 		x_train.append(features)
 		y_train.append(label_set)
 	return x_train,y_train
-
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
@@ -325,7 +399,7 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 		feature_seq={}
 		if np.any(np.isnan([mean,variance,freq_mean,freq_var])):
 			print "Nan feature"
-			print [mean,variance,freq_mean,freq_var,diff_feat ,diff_freq ,p25_feat ,p75_feat, p25_freq, p75_freq]
+			print [mean,variance,freq_mean,freq_var,diff_feat ,diff_freq] # ,p25_feat ,p75_feat, p25_freq, p75_freq]
 		else:
 			feature_seq={}
 			for i in range(len(feature_data.T)):
@@ -353,12 +427,12 @@ def training(X_train, y_train):
 	# pycrfsuite.ItemSequence
 	# %%time
 	crf = sklearn_crfsuite.CRF(
-		algorithm='lbfgs',
-		c1=0.1,
-		c2=0.1,
-		max_iterations=100,
-		all_possible_transitions=True
-		)
+			algorithm='lbfgs',
+			c1=0.1,
+			c2=0.1,
+			max_iterations=100,
+			all_possible_transitions=True
+			)
 	crf.fit(X_train, y_train)
 	return crf
 
@@ -396,7 +470,6 @@ def testing(crf,X_test,y_test):
 	labels = list(crf.classes_)
 	y_pred = crf.predict(X_test)
 	sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
-	
 	print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
 	return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 
@@ -421,12 +494,11 @@ def print_state_features(state_features):
 """
 Data filter:
 Slicing to 18.0511563087% of non lable data
-             precision    recall  f1-score   support
+			 precision    recall  f1-score   support
 
-        0      0.851     0.914     0.881     18441
-        1      0.870     0.783     0.824     13590
+		0      0.851     0.914     0.881     18441
+		1      0.870     0.783     0.824     13590
 avg / total      0.859     0.858     0.857     32031
-
 """
 
 def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
@@ -445,100 +517,35 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	# Train algorithm:
 	crf = training(X_train, y_train)
 	#crf = trainingRandomized(X_train, y_train)
-    # Test algorithm:
+	# Test algorithm:
 	return testing(crf,X_test,y_test)
 
-def shuffle_and_cut_subj(X,y,training_vs_testing,train_subj,test_subj,info_list):
-	X, y = shuffle(X, y, random_state=0)
-
-	X_train = []
-	Y_train = []
-	X_test = []
-	Y_test = []
-
-	# X is list of list of dirs
-
-	# user_ids =  [info_row[1] for sublist in info_list for info_row in sublist]
-	user_ids =  [info_row[0][1] for info_row in info_list]
-	try:
-		for i, user_id in enumerate(user_ids):
-
-			if i == len(user_ids): 
-				print 'Index warnig'
-				continue
-			if str(int(user_id)) in train_subj:
-				X_train.append(X[i])
-				Y_train.append(y[i])
-			elif str(int(user_id)) in test_subj:
-				X_test.append(X[i])
-				Y_test.append(y[i])
-			else:
-				print str(int(user_id))
-
-	except:
-		print("Unexpected error:", sys.exc_info()[0])
-
-	return X_train,X_test,Y_train,Y_test
-
-def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_test=[]):
-    # Parameter
-
-	sequence_length_sec = inputvect[0]
-	no_lable_vs_lable = inputvect[1]
-	training_vs_testing = inputvect[2]
-	sub_seq_length_sec = inputvect[3]
+def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
+	sequence_length_sec = 30
+	no_lable_vs_lable = 0.7
+	training_vs_testing = 0.8
+	sub_seq_length_sec = 3
+	data_frequency = 4
 	feature_length = sub_seq_length_sec*data_frequency
 	training_data = load_q_data(no_lable_vs_lable)
-	sequences,labels,info_list = data2seq(training_data,int(sequence_length_sec*data_frequency))
+	sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
 	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-	# print "DATA " + str(len(X))
-	subjects = ['100','101','102','103','104','106','107','108','109','110']
-	for subject in subjects:
-		subj_train = [x for x in subjects if not x in subject]
-		subj_test = subject
-		print "-----------------"
-		print "train: " + str(subj_train)
-		print "test: " + str(subj_test)
-		X_train,X_test,y_train,y_test = shuffle_and_cut_subj(X,y,training_vs_testing,subj_train,subj_test,info_list)
-		crf = training(X_train, y_train)
-		testing(crf,X_test,y_test)
-
-def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
-    sequence_length_sec = 30
-    no_lable_vs_lable = 0.7
-    training_vs_testing = 0.8
-    sub_seq_length_sec = 3
-    data_frequency = 4
-    feature_length = sub_seq_length_sec*data_frequency
-    training_data = load_q_data(no_lable_vs_lable)
-    sequences,labels = data2seq(training_data,sequence_length_sec*data_frequency)
-    norm_sequences,normalization_constants = normalize_train(sequences)
-    X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-    # Randomize and split:
-    X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-    # Train algorithm:
-    crf = training(X_train, y_train)
-    crf = trainingRandomized(X_train, y_train)
-    # Test algorithm:
-    testing(crf,X_test,y_test)
-    X_test_real = loadtestdata(test_data_files,sequence_length_sec*data_frequency,sub_seq_length_sec*data_frequency)
-
+	X,y = seq2seqfeatures(norm_sequences, labels, feature_length, True)
+	# Randomize and split:
+	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+	# Train algorithm:
+	crf = training(X_train, y_train)
+	crf = trainingRandomized(X_train, y_train)
+	# Test algorithm:
+	testing(crf,X_test,y_test)
+	X_test_real = loadtestdata(test_data_files,sequence_length_sec*data_frequency,sub_seq_length_sec*data_frequency)
 
 def main():
 	"""Main entry point for the script."""
 	subjects = ['100','101','102','103','104','106','107','108','109','110']
 	run_crf_subjects()
-
-	# run_crf()
 	# run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
-	
-#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
-#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
-#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
-#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
-#    run_crf(sequence_length_sec = 30, no_lable_vs_lable = 0.7, training_vs_testing = 0.8, sub_seq_length_sec = 3)
 
 if __name__ == '__main__':
-    sys.exit(main())
+	sys.exit(main())
 
