@@ -268,7 +268,6 @@ def data2seq_raw(data,window_length,label_prior):
 				labler_iterator += 1
 			else:
 				label = 0
-			# Info list:
 			# Windows: detect time shifts ***
 			if window_iterator < window_length:
 				# raw = [0, 'LOG03_00KG', 0, 1410452087.0, '2014_09_11', '12:14:47.250', '1.350', '0.720', '0.000', '-1', '34.100', '5.598', '0']
