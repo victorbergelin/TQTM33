@@ -108,42 +108,6 @@ def load_q_data(no_lable_vs_lable):
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
 
-"""
-def load_q_data_subj(no_lable_vs_lable, train_subjects, test_subjects):
-	# standard directory: 
-	non_label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/NonSmoking/*'
-	label_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TrainingData/Smoking/*'
-	testing_directory = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/*'
-	# load lables
-	list_of_files = getfilelist(label_directory)
-	# load lables
-	list_of_files = getfilelist(label_directory)
-	# LOAD DATA for file
-	lable_data = [loaddata(file_path) for file_path in list_of_files]
-	#lable_data_train
-	#lable_data_test
-	random.shuffle(lable_data)
-	# load non lables
-	list_of_files = getfilelist(non_label_directory)
-	non_lable_data = [loaddata(file_path) for file_path in list_of_files]
-	random.shuffle(non_lable_data)
-	# count content
-	if len(lable_data)==0 or len(non_lable_data)==0:
-		print("no data found, quiting")
-		quit()
-	non_lable_fraction = float(sum(len(x) for x in lable_data))/float(sum(len(x) for x in non_lable_data))
-	conversion_fraction = non_lable_fraction/no_lable_vs_lable
-	print "Data filter:" 
-	if conversion_fraction < 1:
-		non_lable_cut_id = int(len(non_lable_data)*conversion_fraction)
-		training_data = lable_data + non_lable_data[:non_lable_cut_id]
-		print "Slicing to " + str(conversion_fraction*100) + "% of non lable data"
-	else:
-		lable_cut_id = int(len(lable_data)/conversion_fraction)
-		training_data = lable_data[:lable_cut_id] + non_lable_data
-		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
-	return training_data
-"""
 
 def load_raw_data(filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'):
 	list_of_markers = getfilelist(filepath+'markers*')
@@ -183,35 +147,10 @@ def load_raw_data(filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data
 	return all_data
 
 
-def format_raw_data(data, inputvect,label_prior):
-	sequence_length_sec = inputvect[0]
-	no_lable_vs_lable = inputvect[1]
-	training_vs_testing = inputvect[2]
-	sub_seq_length_sec = inputvect[3]
-	window_length = int(sequence_length_sec*data_frequency)
-	feature_length = sub_seq_length_sec*data_frequency
-	sequences,labels,info_list = data2seq_raw(data,window_length,label_prior)
-	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-	return X,y
+# DATA HANDLER FUNCTIONS
 
-"""
 
-sequence_length_sec = inputvect[0]
-no_lable_vs_lable = inputvect[1]
-training_vs_testing = inputvect[2]
-sub_seq_length_sec = inputvect[3]
-window_length = int(sequence_length_sec*data_frequency)
-feature_length = sub_seq_length_sec*data_frequency
-sequences,labels,info_list = data2seq_raw(data,window_length,label_prior)
-norm_sequences,normalization_constants = normalize_train(sequences)
-X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
 
-"""
-
-# New data seq
-# import learning as lr
-#  x_list,y_label,info_list = lr.data2seq_raw(data,label_prior,int(sequence_length_sec*data_frequency))
 def data2seq_raw(data,window_length,label_prior):
 	x_list = []
 	y_list = []
@@ -272,7 +211,7 @@ def data2seq_raw(data,window_length,label_prior):
 				window_iterator = 0
 	return x_list,y_list,info_list
 
-# DATA HANDLER FUNCTIONS
+
 # New data seq
 def data2seq(data,window_length):
 	y_label = []
@@ -462,6 +401,18 @@ def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
 	y_test = y[cut_id:]
 	return X_train,X_test,y_train,y_test
 
+def format_raw_data(data, inputvect,label_prior):
+	sequence_length_sec = inputvect[0]
+	no_lable_vs_lable = inputvect[1]
+	training_vs_testing = inputvect[2]
+	sub_seq_length_sec = inputvect[3]
+	window_length = int(sequence_length_sec*data_frequency)
+	feature_length = sub_seq_length_sec*data_frequency
+	sequences,labels,info_list = data2seq_raw(data,window_length,label_prior)
+	norm_sequences,normalization_constants = normalize_train(sequences)
+	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+	return X,y
+
 # FEATURE DATA: 
 def print_state_features(state_features):
 	for (attr, label), weight in state_features:
@@ -471,7 +422,7 @@ def print_state_features(state_features):
 		print("\nTop negative:")
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
 
-
+# FULL RUNNERS:
 def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	# Parameters
 	sequence_length_sec = inputvect[0]
@@ -490,6 +441,21 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	#crf = trainingRandomized(X_train, y_train)
 	# Test algorithm:
 	return testing(crf,X_test,y_test)
+
+# Run on raw data:
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},train_path="",test_path=""):
+    # Parameter
+    filepath = ''
+    data = load_raw_data()
+    X,y = format_raw_data(data,inputvect,label_prior)
+    data_frequency = 4
+    training_vs_testing = inputvect[2]
+
+    data = load_raw_data()
+    X,y = format_raw_data(data,inputvect,label_prior)
+    X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+    crf = training(X_train, y_train)
+    res = testing(crf,X_test,y_test)   
 
 def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/TestingData/Smoking/107.csv'):
 	sequence_length_sec = 30
@@ -513,9 +479,7 @@ def run_crf_test(test_data_files = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Cod
 
 def main():
 	"""Main entry point for the script."""
-	subjects = ['100','101','102','103','104','106','107','108','109','110']
-	run_crf_subjects()
-	# run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
+	run_crf_raw()
 
 if __name__ == '__main__':
 	sys.exit(main())

@@ -59,22 +59,25 @@ def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_
 def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]}):
 	# Parameter
 	filepath = ''
-	data = lr.load_raw_data()
-	X,y = lr.format_raw_data(data,inputvect,label_prior)
+	data = load_raw_data()
+	X,y = format_raw_data(data,inputvect,label_prior)
 	data_frequency = 4
 	training_vs_testing = inputvect[2]
 
-	data = lr.load_raw_data()
-	X,y = lr.format_raw_data(data,inputvect,label_prior)
-	X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
-	crf = lr.training(X_train, y_train)
-	res = lr.testing(crf,X_test,y_test)   
+	data = load_raw_data()
+	X,y = format_raw_data(data,inputvect,label_prior)
+	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+	crf = training(X_train, y_train)
+	res = testing(crf,X_test,y_test)   
 	#X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
 	#crf = training(X_train, y_train)
 	#return testing(crf,X_test,y_test)
 
 def main():
 	run_crf_raw()
+	 # subjects = ['100','101','102','103','104','106','107','108','109','110']
+	 # run_crf_subjects()
+	 # run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[str(x) for x in range(100,110)],subj_test=['110'])
 
 if __name__ == '__main__':
 	sys.exit(main())
