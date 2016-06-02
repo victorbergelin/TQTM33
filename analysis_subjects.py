@@ -61,11 +61,12 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_test=
 	# Parameter
 	filepath = ''
 	data = lr.load_raw_data()
-	X,y = lr.format_raw_data(data,inputvect,label_prior)
 	inputvect = np.array([10, 0.7, 0.8, 2])
 	label_prior={1:[30,600],0:[600,7200]}
+	X,y = lr.format_raw_data(data,inputvect,label_prior)
 	data_frequency = 4
 	training_vs_testing = inputvect[2]
+
 	data = lr.load_raw_data()
 	X,y = lr.format_raw_data(data,inputvect,label_prior)
 	X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
@@ -90,6 +91,7 @@ import learning as lr
 
 inputvect = np.array([10, 0.7, 0.8, 2])
 label_prior={1:[30,600],0:[600,7200]}
+training_vs_testing = inputvect[2]
 data_frequency = 4
 
 data = lr.load_raw_data()

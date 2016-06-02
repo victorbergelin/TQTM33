@@ -197,18 +197,17 @@ def format_raw_data(data, inputvect,label_prior):
 	return X,y
 
 """
-def format_raw_data(data, inputvect,label_prior):
-    sequence_length_sec = inputvect[0]
-    no_lable_vs_lable = inputvect[1]
-    training_vs_testing = inputvect[2]
-    sub_seq_length_sec = inputvect[3]
-    feature_length = sub_seq_length_sec*data_frequency
-    #x_list,y_label,info_list = lr.data2seq_raw(data,label_prior,int(sequence_length_sec*data_frequency))
 
-    sequeVnces,labels,info_list = data2seq_raw(data,int(sequence_length_sec*data_frequency),label_prior)
-    norm_sequences,normalization_constants = normalize_train(sequences)
-    X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-    return X,y
+sequence_length_sec = inputvect[0]
+no_lable_vs_lable = inputvect[1]
+training_vs_testing = inputvect[2]
+sub_seq_length_sec = inputvect[3]
+window_length = int(sequence_length_sec*data_frequency)
+feature_length = sub_seq_length_sec*data_frequency
+sequences,labels,info_list = data2seq_raw(data,window_length,label_prior)
+norm_sequences,normalization_constants = normalize_train(sequences)
+X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+
 """
 
 
@@ -329,7 +328,7 @@ def normalize_test(sequences,normalization_constants):
 def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 	x_train = []
 	y_train = []
-	for label,seq in zip(labels,sequences):
+	for label_features,seq in zip(labels,sequences):
 		data_points = int(len(seq) / feature_length)
 		if data_points == 0:
 			data_points = 1
@@ -339,7 +338,8 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 			temp = extractQfeatures(seq[int(i*feature_length):int((i+1)*feature_length-1)],export_to_list_or_dict)
 			if len(temp)>0:
 				features.append(temp)
-				label_set.append(str(label))
+				label = str(max(label_features))
+				label_set.append(label)
 		x_train.append(features)
 		y_train.append(label_set)
 	return x_train,y_train
@@ -433,8 +433,11 @@ def testing(crf,X_test,y_test):
 	print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
 	return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 
-def shuffle_and_cut(X,y,training_vs_testing):
+def shuffle_and_cut(X,y,training_vs_testing,no_lable_vs_lable=0.7):
 	X, y = shuffle(X, y, random_state=0)
+
+	y_index = np.argsort(y)
+
 	cut_id = int(len(X)*training_vs_testing)
 	X_train = X[:cut_id]
 	X_test = X[cut_id:]
