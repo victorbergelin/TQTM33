@@ -2,9 +2,7 @@
 """ 
 
 Script to implement CRF for HAR on smoking pattern data
-
 Dartmouth College
-
 Victor Bergelin
 
 """
@@ -20,7 +18,6 @@ import random
 import time
 import datetime
 from collections import defaultdict 
-
 
 import scipy.stats
 from sklearn.metrics import make_scorer
@@ -40,16 +37,14 @@ np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
 # np.seterr(divide='ignore', invalid='ignore')
 
-# Parameters
-
 # Config
 data_frequency = 4
-np.random.seed(1)
-random.seed(1)
+np.random.seed(4)
+random.seed(4)
 
 # HELPER FUNCITONS
 def getfilelist(directory):
-	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.' ]
+	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.']
 	return list_of_files
 
 def loaddata(file_name,headerrows=1):

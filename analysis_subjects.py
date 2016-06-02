@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 """
 
 Victor Bergelin
@@ -9,8 +10,6 @@ import sys
 import learning as lr
 import random
 from sklearn.utils import shuffle
-
-
 
 def shuffle_and_cut_subj(X,y,training_vs_testing,train_subj,test_subj,info_list):
 	X, y = shuffle(X, y, random_state=0)
@@ -57,12 +56,10 @@ def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_
 	#crf = training(X_train, y_train)
 	#return testing(crf,X_test,y_test)
 
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]}):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]}):
 	# Parameter
 	filepath = ''
 	data = lr.load_raw_data()
-	inputvect = np.array([10, 0.7, 0.8, 2])
-	label_prior={1:[30,600],0:[600,7200]}
 	X,y = lr.format_raw_data(data,inputvect,label_prior)
 	data_frequency = 4
 	training_vs_testing = inputvect[2]
@@ -103,3 +100,4 @@ crf = lr.training(X_train, y_train)
 res = lr.testing(crf,X_test,y_test)
 
 """
+
