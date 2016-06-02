@@ -1,3 +1,4 @@
+#!/usr/local/bin/python
 """ 
 
 Script to implement CRF for HAR on smoking pattern data
@@ -7,6 +8,7 @@ Dartmouth College
 Victor Bergelin
 
 """
+from __future__ import division
 import sys
 import csv
 from os import listdir
@@ -17,6 +19,8 @@ import glob
 import random
 import time
 import datetime
+from collections import defaultdict 
+
 
 import scipy.stats
 from sklearn.metrics import make_scorer
@@ -209,9 +213,6 @@ norm_sequences,normalization_constants = normalize_train(sequences)
 X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
 
 """
-
-
-# row = [0, 'LOG03_00KG', 0, 1410452087.0, '2014_09_11', '12:14:47.250', '1.350', '0.720', '0.000', '-1', '34.100', '5.598', '0']
 
 # New data seq
 # import learning as lr
@@ -421,7 +422,6 @@ def trainingRandomized(X_train, y_train):
 	print('best CV score:', rs.best_score_)
 	print('model size: {:0.2f}M'.format(rs.best_estimator_.size_ / 1000000))
 	return rs
-
 # labels = list(crf.classes_)
 # labels.remove('O')
 
@@ -433,11 +433,33 @@ def testing(crf,X_test,y_test):
 	print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
 	return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 
-def shuffle_and_cut(X,y,training_vs_testing,no_lable_vs_lable=0.7):
+def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
 	X, y = shuffle(X, y, random_state=0)
 
-	y_index = np.argsort(y)
+	# balance labels by subsampling:
+	y_dict = defaultdict(list)
+	for i, y_i in enumerate(y):
+		y_dict[y_i[0]].append(i)
+	
+	# subsample
+	y_set = set(y_dict)
+	y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
+	quotent = y_dict_len[0] / sum(y_dict_len)
+	
+	# generalize over multiple classes: 
+	if(quotent > no_lable_vs_lable):
+		# decrease 0 class labels:
+		newLen = int(sum(y_dict_len[1:])/(1-no_lable_vs_lable))
+		id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
+		X_sub = [X[id] for id in id_new]
+		y_sub = [y[id] for id in id_new]
+	else:
+		newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
+		id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
+		X_sub = [X[id] for id in id_new]
+        y_sub = [y[id] for id in id_new]
 
+	X, y = shuffle(X_sub, y_sub, random_state=0)
 	cut_id = int(len(X)*training_vs_testing)
 	X_train = X[:cut_id]
 	X_test = X[cut_id:]
