@@ -184,33 +184,6 @@ def load_raw_data(filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data
 	return all_data
 
 
-"""
-
-import numpy as np
-import sys
-import learning as lr
-
-inputvect = np.array([30, 0.7, 0.8, 3])
-label_prior={1:[30,600],0:[600,7200]}
-data_frequency = 4
-
-filepath = '/Users/victorbergelin/Dropbox/Liu/TQTM33/Code/Data/Rawdataimport/'
-data = lr.load_raw_data(filepath)
-
-sequence_length_sec = inputvect[0]
-no_lable_vs_lable = inputvect[1]
-training_vs_testing = inputvect[2]
-sub_seq_length_sec = inputvect[3]
-window_length = int(sequence_length_sec*data_frequency)
-feature_length = sub_seq_length_sec*data_frequency
-
-sequences,labels,info_list = lr.data2seq_raw(data,window_length,label_prior)
-
-norm_sequences,normalization_constants = normalize_train(sequences)
-X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-
-"""
-
 def format_raw_data(data, inputvect,label_prior):
 	sequence_length_sec = inputvect[0]
 	no_lable_vs_lable = inputvect[1]
@@ -238,6 +211,9 @@ def format_raw_data(data, inputvect,label_prior):
     return X,y
 """
 
+
+# row = [0, 'LOG03_00KG', 0, 1410452087.0, '2014_09_11', '12:14:47.250', '1.350', '0.720', '0.000', '-1', '34.100', '5.598', '0']
+
 # New data seq
 # import learning as lr
 #  x_list,y_label,info_list = lr.data2seq_raw(data,label_prior,int(sequence_length_sec*data_frequency))
@@ -257,52 +233,49 @@ def data2seq_raw(data,window_length,label_prior):
 		info_window_list = np.array([])
 		y_window_list = np.array([])
 		label = 0
-		for row in files_data:
+		label_pass = False
+		for i, row in enumerate(files_data):
 			data_row = []
 			# Labeling: should detect time shift between frames? (non continous) ***
 			if row[2] != 0:
 				label = row[2]
 				labler_iterator = 0
+				label_pass = True # Skipp window untill label length is achived
+				#print "start of label: " + str(i)
 			# MARGIN LABEL HERE ***
 			elif labler_iterator < label_length:
 				labler_iterator += 1
+			elif labler_iterator == label_length and label:
+				#print "End of label pass:" + str(i)
+				label = 0
+				label_pass = True
 			else:
 				label = 0
 			# Windows: detect time shifts ***
 			if window_iterator < window_length:
-				# raw = [0, 'LOG03_00KG', 0, 1410452087.0, '2014_09_11', '12:14:47.250', '1.350', '0.720', '0.000', '-1', '34.100', '5.598', '0']
-				#print len(x_window_list)
-				#print len(np.hstack(row)[[0,2,3,6,7,9,10,11]].astype(np.float))
-				#print "----"
 				if len(x_window_list)==0:
 					x_window_list = np.hstack(row)[[6,7,8,10,11]].astype(np.float)
 					info_window_list = np.hstack(row)[[0,1,2,3,4,5]]
+					y_window_list = np.array(label)
 				else:
 					x_window_list = np.vstack((x_window_list,np.hstack(row)[[6,7,8,10,11]].astype(np.float)))
 					info_window_list = np.vstack((info_window_list,np.hstack(row)[[0,1,2,3,4,5]]))
-				y_window_list = np.append(y_window_list,label)
+					y_window_list = np.append(y_window_list,label)
 				window_iterator += 1
-
+			# End of window catcher
 			else:
-				x_list.append(x_window_list)
-				y_list.append(y_window_list)
+				if label_pass:
+					#print "pass"
+					label_pass = False
+				else:
+					x_list.append(x_window_list)
+					y_list.append(y_window_list)
+					info_list.append(info_window_list)
 				x_window_list = np.array([])
 				info_window_list = np.array([])
 				y_window_list = np.array([])
 				window_iterator = 0
 	return x_list,y_list,info_list
-
-"""	
-	# extract windows
-	nrsequences = int(len(sequence) / window_length)
-	if nrsequences == 0:
-		nrsequences = 1
-	for i in range(nrsequences):
-		x_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[5,6,7,9,10]])
-		# info_list.append(np.vstack(sequence[int(i*window_length):int((i+1)*window_length-1)]).astype(np.float)[:,[0,1,2,3,4]])
-		y_label.append(int(sequence[0][0]))
-pass 
-"""
 
 # DATA HANDLER FUNCTIONS
 # New data seq
@@ -382,14 +355,6 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	freq_mean= np.mean(freq_space,0)
 	freq_var = np.std(feature_data,0)
 	# Square sum of any over 75% or under 25%
-	#p25 = np.percentile(np.abs(feature_data),25,0)
-	#p75 = np.percentile(np.abs(feature_data),75,0)
-	#p25_feat = ((feature_data*(np.abs(feature_data)<p25))**2).sum(axis=0)
-	#p75_feat = ((feature_data*(np.abs(feature_data)>p75))**2).sum(axis=0)
-	#p25 = np.percentile(np.abs(freq_space),25,0)
-	#p75 = np.percentile(np.abs(freq_space),75,0)
-	#p25_freq = ((freq_space*(np.abs(freq_space)<p25))**2).sum(axis=0)
-	#p75_freq = ((freq_space*(np.abs(freq_space)>p75))**2).sum(axis=0)
 	# Sum difference, volatility 
 	diff_feat = sum(np.abs(np.diff(feature_data.transpose()).transpose()))
 	diff_freq = sum(np.abs(np.diff(freq_space.transpose()).transpose()))
@@ -409,10 +374,6 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 				feature_seq["diff_feat"+str(i)] = diff_feat[i]
 				feature_seq["diff_freq"+str(i)] = diff_freq[i]
 				# percentile decrease performance:
-				#feature_seq["p25_feat"+str(i)] = p25_feat[i]
-				#feature_seq["p75_feat"+str(i)] = p75_feat[i]
-				#feature_seq["p25_freq"+str(i)] = p25_freq[i]
-				#feature_seq["p75_freq"+str(i)] = p75_freq[i]
 	else:
 		feature_seq=[]
 		if np.any(np.isnan([mean,variance,freq_mean,freq_var])):
@@ -490,15 +451,6 @@ def print_state_features(state_features):
 		print("\nTop negative:")
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
 
-"""
-Data filter:
-Slicing to 18.0511563087% of non lable data
-			 precision    recall  f1-score   support
-
-		0      0.851     0.914     0.881     18441
-		1      0.870     0.783     0.824     13590
-avg / total      0.859     0.858     0.857     32031
-"""
 
 def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	# Parameters
