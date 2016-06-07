@@ -36,6 +36,12 @@ from collections import Counter
 
 # Ploting
 import matplotlib.pyplot as plt
+import matplotlib.dates as md
+import numpy as np
+import datetime as dt
+import time
+
+
 
 # Print options
 np.set_printoptions(suppress=True)
@@ -307,16 +313,17 @@ def normalize_test(sequences,normalization_constants):
 	return [normalized_seq.T for normalized_seq in normalized_sequences]
 # ------------------------------------------
 
-
-def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
+def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict,info_list):
 	x_train = []
 	y_train = []
-	for label_features,seq in zip(labels,sequences):
+	info_seq_list = []
+	for label_features,seq,info in zip(labels,sequences,info_list):
 		data_points = int(len(seq) / feature_length)
 		if data_points == 0:
 			data_points = 1
 		features = []
 		label_set = []
+		info_seq = []
 		for i in range(data_points):
 			temp = extractQfeatures(seq[int(i*feature_length):int((i+1)*feature_length-1)],export_to_list_or_dict)
 			if len(temp)>0:
@@ -326,9 +333,12 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict):
 				else:
 					label = str(max(label_features))
 				label_set.append(label)
+				# info list: timestamps
+				info_seq.append(info[int((i+0.5)*feature_length)][3])
 		x_train.append(features)
 		y_train.append(label_set)
-	return x_train,y_train
+		info_seq_list.append(info_seq)
+	return x_train,y_train,info_seq_list
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
@@ -411,7 +421,7 @@ def trainingRandomized(X_train, y_train):
 # labels = list(crf.classes_)
 # labels.remove('O')
 
-def testing(crf,X_test,y_test=[]):
+def testing(crf,X_test,time_seq=[],y_test=[]):
 	if y_test:
 		print("Results:")
 		labels = list(crf.classes_)
@@ -421,10 +431,11 @@ def testing(crf,X_test,y_test=[]):
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
-		plt.plot(y_pred)
-		plt.ylabel('predicted smokes')
-		plt.show()
+		plot_results(y_pred,X_test,time_seq)
+		return y_pred
+
 # ------------------------------------------
+
 
 # DATA HELPERS:
 # ------------------------------------------
@@ -478,18 +489,18 @@ def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
 	print "len sequences = " + str(len(sequences))
 	if normalization_constants == 1:
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+		X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
 		return X,y,normalization_constants
 	elif isinstance(normalization_constants,int):
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-		return X,y
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
+		return X,y,time_seq
 	else:
 		# USE normalization_constants in normalize_test:
 		# norm_sequences,normalization_constants = normalize_train(sequences)
 		norm_sequences = normalize_test(sequences, normalization_constants)
-		X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-		return X,y
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
+		return X,y,time_seq
 # ------------------------------------------
 
 # PRESENTER MODUL:
@@ -506,6 +517,29 @@ def present_run(inputvect = "", label_prior="",train_path="", test_path=""):
 	print "Train: " + train_path
 	print "Test: " + test_path
 	print "---- MAIN RUN ----"
+
+
+def plot_results(y_pred,x_test,time_seq):
+	y_flat = [y for y_sub in y_pred for y in y_sub]
+	t_flat = [float(t) for t_sub in time_seq for t in t_sub]
+	keys = ['mean5','mean3','mean4']
+	x_flat = [[line[key] for key in keys] for x_sub in X_test for line in x_sub]
+	x_1,x_2,x_3 = map(list, zip(*x_flat))
+
+	dates=[dt.datetime.fromtimestamp(ts) for ts in t_flat]
+	datenums=md.date2num(dates)
+	plt.subplots_adjust(bottom=0.2)
+	plt.xticks( rotation=25 )
+	ax=plt.gca()
+	xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
+	ax.xaxis.set_major_formatter(xfmt)
+	markers = [d for (d,y) in zip(datenums,y_flat) if y == '1']
+	# plt.plot(datenums,y_flat,'r^',datenums,x_1,'b-',datenums,x_2,'b-',datenums,x_3,'g-')
+	plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-')
+	[ax.axvline(mark,0,1) for mark in markers]
+	plt.ylabel('predicted smokes')
+	plt.show()
+
 # ------------------------------------------
 
 
@@ -534,14 +568,14 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 	training_data = load_q_data(no_lable_vs_lable)
 	sequences,labels,info_list = data2seq(training_data,int(sequence_length_sec*data_frequency))
 	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
+	X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
 	# Randomize and split:
 	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
 	# Train algorithm:
 	crf = training(X_train, y_train)
 	crf = trainingRandomized(X_train, y_train)
 	# Test algorithm:
-	return testing(crf,X_test,y_test)
+	return testing(crf,X_test,y_test=y_test)
 
 
 # Run on raw data:
@@ -556,13 +590,14 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 	X_test = []
 	y_train = []
 	y_test = []
+	time_seq = []
 
 	# Test data or not:
 	if test_path=="": 
 		data = load_raw_data(train_path)
 		print "len(data) = " + str(len(data))
-		X,y = format_raw_data(data,inputvect,label_prior)
-		print "len(X) = " + str(len(x))
+		X,y,time_seq = format_raw_data(data,inputvect,label_prior)
+		print "len(X) = " + str(len(X))
 		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
 	else:
 		train_data = load_raw_data(train_path)
@@ -573,12 +608,12 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		print "Shuffle data"
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
-		X_test,y_test= format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
 
 	crf = training(X_train, y_train)
 	#res = testing(crf,X_test,y_test)
 	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test)
+	res = testing(crf,X_test,time_seq=time_seq)
 # ------------------------------------------
 
 
@@ -588,22 +623,26 @@ def main():
 	"""Main entry point for the script."""
 	# run_crf()
 
+	# all data as test:
 	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
 	
-
+	# small trainingset:
 	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph2/'
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
-	#run_crf_raw(train_path=train_path,test_path=test_path) 
+	run_crf_raw(train_path=train_path,test_path=test_path) 
+	
 
-	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
-	run_crf_raw(train_path=train_path)
+	# train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
+	# run_crf_raw(train_path=train_path)
 
 if __name__ == '__main__':
 	sys.exit(main())
 
 
 """ 
+import learning as lr
+import numpy as np
 
 inputvect = np.array([30, 0.7, 0.8, 5])
 subj_train=[]
@@ -616,7 +655,7 @@ train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph2/
 test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
 
 
-present_run(inputvect, label_prior,train_path, test_path)
+lr.present_run(inputvect, label_prior,train_path, test_path)
 data_frequency = 4
 no_lable_vs_lable = inputvect[1]
 training_vs_testing = inputvect[2]
@@ -625,29 +664,45 @@ X_train = []
 X_test = []
 y_train = []
 y_test = []
+time_seq = []
 
-# Test data or not:
-if test_path=="": 
-    data = load_raw_data(train_path)
-    print "len(data) = " + str(len(data))
-    X,y = format_raw_data(data,inputvect,label_prior)
-    print "len(X) = " + str(len(x))
-    X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-else:
-    train_data = load_raw_data(train_path)
-    print "len(train_data) = " + str(len(train_data))
-    X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
-    print "len(X) = " + str(len(X_train))
-    X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
-    print "Shuffle data"
-    test_data = load_raw_test_data(test_path)
-    print "len(test_data) = " + str(len(test_data))
-    X_test,y_test= format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+train_data = lr.load_raw_data(train_path)
+print "len(train_data) = " + str(len(train_data))
+X_train,y_train,normalization_constants = lr.format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+print "len(X) = " + str(len(X_train))
+X_train,y_train = lr.shuffle_data(X_train,y_train,no_lable_vs_lable)
+print "Shuffle data"
+test_data = lr.load_raw_test_data(test_path)
+print "len(test_data) = " + str(len(test_data))
+X_test,y_test,time_seq = lr.format_raw_data(test_data,inputvect,label_prior,normalization_constants)
 
-crf = training(X_train, y_train)
-#res = testing(crf,X_test,y_test)
-res = testing(crf,X_test)
+crf = lr.training(X_train, y_train)
+#res = lr.testing(crf,X_test,y_test)
+print "Run time: " + str(time.time()-starttime)
+res = lr.testing(crf,X_test)
 
 
+y_flat = [y for y_sub in y_pred for y in y_sub]
+t_flat = [float(t) for t_sub in time_seq for t in t_sub]
+keys = ['mean5','mean3','mean4']
+x_flat = [[line[key] for key in keys]  for x_sub in X_test for line in x_sub]
+x_1,x_2,x_3 = map(list, zip(*x_flat))
+
+
+dates=[dt.datetime.fromtimestamp(ts) for ts in t_flat]
+datenums=md.date2num(dates)
+plt.subplots_adjust(bottom=0.2)
+plt.xticks( rotation=25 )
+ax=plt.gca()
+xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
+ax.xaxis.set_major_formatter(xfmt)
+
+markers = [d for (d,y) in zip(datenums,y_flat) if y == '1']
+
+# plt.plot(datenums,y_flat,'r^',datenums,x_1,'b-',datenums,x_2,'b-',datenums,x_3,'g-')
+plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-')
+[ax.axvline(mark,0,1) for mark in markers]
+plt.ylabel('predicted smokes')
+plt.show()
 
 """
