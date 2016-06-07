@@ -519,7 +519,7 @@ def present_run(inputvect = "", label_prior="",train_path="", test_path=""):
 	print "---- MAIN RUN ----"
 
 
-def plot_results(y_pred,x_test,time_seq):
+def plot_results(y_pred,X_test,time_seq):
 	y_flat = [y for y_sub in y_pred for y in y_sub]
 	t_flat = [float(t) for t_sub in time_seq for t in t_sub]
 	keys = ['mean5','mean3','mean4']
