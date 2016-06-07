@@ -142,8 +142,9 @@ def load_raw_data(filepath = ''):
 		marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
 	# 2. Load data from markers:
 	all_data = []
-	for i, set_name in enumerate(marker_set):
-		print str(i) + " " + set_name
+	for i, set_name in enumerate(marker_set): 
+		if set_name in 'Dataset':
+			continue
 		log = ""
 		try:
 			log_matrix = []
@@ -159,7 +160,7 @@ def load_raw_data(filepath = ''):
 				log_matrix[index][2] = 1 # *** MAKE THIS LABEL MORE DYNAMIC AND GENERALL
 			all_data.append(log_matrix)
 		except:
-			print "error at:"
+			print "load_raw_data: Error at: set_name - log iterationNr"
 			print set_name+"-"+log + " " + str(i)
 			print str(marker_set) + " " + filepath
 	return all_data
@@ -593,8 +594,10 @@ def main():
 
 	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph2/'
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
-	run_crf_raw(train_path=train_path,test_path=test_path) 
+	#run_crf_raw(train_path=train_path,test_path=test_path) 
 
+	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
+	run_crf_raw(train_path=train_path)
 
 if __name__ == '__main__':
 	sys.exit(main())
