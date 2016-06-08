@@ -41,8 +41,6 @@ import numpy as np
 import datetime as dt
 import time
 
-
-
 # Print options
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
@@ -421,7 +419,7 @@ def trainingRandomized(X_train, y_train):
 # labels = list(crf.classes_)
 # labels.remove('O')
 
-def testing(crf,X_test,time_seq=[],y_test=[]):
+def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 	if y_test:
 		print("Results:")
 		labels = list(crf.classes_)
@@ -431,7 +429,7 @@ def testing(crf,X_test,time_seq=[],y_test=[]):
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
-		plot_results(y_pred,X_test,time_seq)
+		plot_results(y_pred,X_test,time_seq,save)
 		return y_pred
 
 # ------------------------------------------
@@ -519,7 +517,7 @@ def present_run(inputvect = "", label_prior="",train_path="", test_path=""):
 	print "---- MAIN RUN ----"
 
 
-def plot_results(y_pred,X_test,time_seq):
+def plot_results(y_pred,X_test,time_seq,save=0):
 	y_flat = [y for y_sub in y_pred for y in y_sub]
 	t_flat = [float(t) for t_sub in time_seq for t in t_sub]
 	keys = ['mean5','mean3','mean4']
@@ -538,7 +536,12 @@ def plot_results(y_pred,X_test,time_seq):
 	plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-')
 	[ax.axvline(mark,0,1) for mark in markers]
 	plt.ylabel('predicted smokes')
-	plt.show()
+	#handles, labels = ax.get_legend_handles_labels()
+	#ax.legend(handles, labels)
+	if save:
+		plt.savefig(str(save) + ".pdf",dpi=300)
+	else:
+		plt.show()
 
 # ------------------------------------------
 
@@ -593,27 +596,33 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 	time_seq = []
 
 	# Test data or not:
-	if test_path=="": 
-		data = load_raw_data(train_path)
-		print "len(data) = " + str(len(data))
-		X,y,time_seq = format_raw_data(data,inputvect,label_prior)
-		print "len(X) = " + str(len(X))
-		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	else:
-		train_data = load_raw_data(train_path)
-		print "len(train_data) = " + str(len(train_data))
-		X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+	#if test_path=="": 
+	#	data = load_raw_data(train_path)
+	#	print "len(data) = " + str(len(data))
+	#	X,y,time_seq = format_raw_data(data,inputvect,label_prior)
+	#	print "len(X) = " + str(len(X))
+	#	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+	#else:
+
+	train_data = load_raw_data(train_path)
+	print "len(train_data) = " + str(len(train_data))
+	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+	
+	subjects = ['100','101','102','103','104','106','107','108','109','110']
+	for s in subjects:
+		test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/' + s + '/ph3/'
+		print s
 		print "len(X) = " + str(len(X_train))
 		X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
 		print "Shuffle data"
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+		crf = training(X_train, y_train)
+		#res = testing(crf,X_test,y_test)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,time_seq=time_seq,save=s)
 
-	crf = training(X_train, y_train)
-	#res = testing(crf,X_test,y_test)
-	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test,time_seq=time_seq)
 # ------------------------------------------
 
 
@@ -628,10 +637,9 @@ def main():
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
 	
 	# small trainingset:
-	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph2/'
+	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
 	run_crf_raw(train_path=train_path,test_path=test_path) 
-	
 
 	# train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
 	# run_crf_raw(train_path=train_path)
@@ -688,21 +696,23 @@ keys = ['mean5','mean3','mean4']
 x_flat = [[line[key] for key in keys]  for x_sub in X_test for line in x_sub]
 x_1,x_2,x_3 = map(list, zip(*x_flat))
 
+markers = [d for (d,y) in zip(datenums,y_flat) if y == '1']
 
 dates=[dt.datetime.fromtimestamp(ts) for ts in t_flat]
 datenums=md.date2num(dates)
+
 plt.subplots_adjust(bottom=0.2)
 plt.xticks( rotation=25 )
 ax=plt.gca()
 xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
 ax.xaxis.set_major_formatter(xfmt)
-
-markers = [d for (d,y) in zip(datenums,y_flat) if y == '1']
-
 # plt.plot(datenums,y_flat,'r^',datenums,x_1,'b-',datenums,x_2,'b-',datenums,x_3,'g-')
-plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-')
+lines = plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-',linewidth=0.01)
 [ax.axvline(mark,0,1) for mark in markers]
+plt.setp(lines, linewidth=1.0)
 plt.ylabel('predicted smokes')
+plt.show()
+plt.savefig("aa.pdf",dpi=500)
 plt.show()
 
 """
