@@ -172,7 +172,7 @@ def load_raw_data(filepath = ''):
 
 def load_raw_test_data(filepath = ''):
 	list_of_test_data = getfilelist(filepath+'LOG*.csv')
-	test_data = []
+	_test_data = []
 	for i, test_file in enumerate(list_of_test_data):
 		test_file_data = []
 		try:
@@ -191,8 +191,8 @@ def load_raw_test_data(filepath = ''):
 		except:
 			print "error at:"
 			print name + " " + str(ii)
-		test_data.append(test_file_data)
-	return test_data
+		_test_data.append(test_file_data)
+	return _test_data
 
 def data2seq_raw(data,window_length,label_prior):
 	x_list = []
@@ -594,34 +594,27 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 	y_train = []
 	y_test = []
 	time_seq = []
-
-	# Test data or not:
-	#if test_path=="": 
-	#	data = load_raw_data(train_path)
-	#	print "len(data) = " + str(len(data))
-	#	X,y,time_seq = format_raw_data(data,inputvect,label_prior)
-	#	print "len(X) = " + str(len(X))
-	#	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	#else:
-
-	train_data = load_raw_data(train_path)
 	print "len(train_data) = " + str(len(train_data))
-	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 	
-	subjects = ['100','101','102','103','104','106','107','108','109','110']
-	for s in subjects:
-		test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/' + s + '/ph3/'
-		print s
+	train_data = load_raw_data(train_path)
+	# Test data or not:
+	if test_path=="": 
+		print "len(data) = " + str(len(train_data))
+		X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
+		print "len(X) = " + str(len(X))
+		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+	else:
+		X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 		print "len(X) = " + str(len(X_train))
 		X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
 		print "Shuffle data"
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
-		crf = training(X_train, y_train)
-		#res = testing(crf,X_test,y_test)
-		print "Run time: " + str(time.time()-starttime)
-		res = testing(crf,X_test,time_seq=time_seq,save=s)
+	crf = training(X_train, y_train)
+	#res = testing(crf,X_test,y_test)
+	print "Run time: " + str(time.time()-starttime)
+	res = testing(crf,X_test,time_seq=time_seq)
 
 # ------------------------------------------
 
