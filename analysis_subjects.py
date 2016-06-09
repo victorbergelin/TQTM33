@@ -53,28 +53,6 @@ def run_crf_subjects(inputvect = np.array([30, 0.7, 0.8, 3]),subj_train=[],subj_
 		crf = training(X_train, y_train)
 		testing(crf,X_test,y_test)
 
-	#X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	#crf = training(X_train, y_train)
-	#return testing(crf,X_test,y_test)
-
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]}):
-	# Parameter
-	filepath = ''
-	data = load_raw_data()
-	X,y = format_raw_data(data,inputvect,label_prior)
-	data_frequency = 4
-	training_vs_testing = inputvect[2]
-
-	data = load_raw_data()
-	X,y = format_raw_data(data,inputvect,label_prior)
-	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	crf = training(X_train, y_train)
-	res = testing(crf,X_test,y_test)   
-	#X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	#crf = training(X_train, y_train)
-	#return testing(crf,X_test,y_test)
-
-
 # Run on raw data:
 def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},train_path="",test_path=""):
 	starttime = time.time()
@@ -97,6 +75,7 @@ def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],s
 	#   print "len(X) = " + str(len(X))
 	#   X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
 	#else:
+
 	train_data = lr.load_raw_data(train_path)
 	print "len(train_data) = " + str(len(train_data))
 	X_train,y_train,normalization_constants = lr.format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
@@ -120,7 +99,7 @@ def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],s
 
 
 def main():
-	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
+	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
 	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
 	run_crf_raw_subjects(train_path=train_path,test_path=test_path)
 	#subjects = ['100','101','102','103','104','106','107','108','109','110']

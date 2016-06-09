@@ -6,6 +6,9 @@ Dartmouth College
 Victor Bergelin
 
 """
+# SETUP {{{
+# ------------------------------------------
+
 from __future__ import division
 import sys
 import csv
@@ -41,6 +44,7 @@ import numpy as np
 import datetime as dt
 import time
 
+
 # Print options
 np.set_printoptions(suppress=True)
 np.set_printoptions(precision=2)
@@ -51,7 +55,9 @@ data_frequency = 4
 np.random.seed(4)
 random.seed(4)
 
-# HELPER FUNCITONS
+# ------------------------------------------ }}}
+
+# HELPER FUNCITONS {{{
 # ------------------------------------------
 def getfilelist(directory):
 	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.']
@@ -83,10 +89,9 @@ def loadrawdata(file_name,headerrows=1):
 				sequence_list.append(list(row))
 		# print header
 	return sequence_list,header
-# ------------------------------------------
+# ------------------------------------------ }}}
 
-
-# DATA HANDLER FUNCTIONS
+# DATA HANDLER FUNCTIONS {{{
 # ------------------------------------------
 def load_q_data(no_lable_vs_lable):
 	# standard directory: 
@@ -271,8 +276,8 @@ def data2seq(data,window_length):
 			y_label.append(int(sequence[0][0]))
 	return x_list,y_label,info_list
 
-# normalize to zero mean, unit variance
-# ------------------------------------------
+
+# normalize to zero mean, unit variance 
 def normalize_train(sequences):
 	mean = []
 	variance = []
@@ -309,7 +314,7 @@ def normalize_test(sequences,normalization_constants):
 			temp_seq.extend([(seq.T[col]-mean[col])/(maxval[col]-mean[col])])
 		normalized_sequences.append(np.array(temp_seq,dtype=float))
 	return [normalized_seq.T for normalized_seq in normalized_sequences]
-# ------------------------------------------
+
 
 def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict,info_list):
 	x_train = []
@@ -376,8 +381,9 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 		else:
 			feature_seq = list(np.concatenate((mean, variance, freq_mean, freq_var)))
 	return feature_seq
+# ------------------------------------------ }}}
 
-# CRF MODEL:
+# CRF MODEL {{{
 # ------------------------------------------
 def training(X_train, y_train):
 	# pycrfsuite.ItemSequence
@@ -426,16 +432,16 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 		y_pred = crf.predict(X_test)
 		sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
 		print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
+		plot_results(y_pred,X_test,time_seq,save)
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
 		plot_results(y_pred,X_test,time_seq,save)
 		return y_pred
 
-# ------------------------------------------
+# ------------------------------------------ }}}
 
-
-# DATA HELPERS:
+# DATA HELPERS {{{
 # ------------------------------------------
 def shuffle_data(X,y,no_lable_vs_lable):
 	X, y = shuffle(X, y, random_state=0)
@@ -499,9 +505,9 @@ def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
 		norm_sequences = normalize_test(sequences, normalization_constants)
 		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
 		return X,y,time_seq
-# ------------------------------------------
+# ------------------------------------------ }}}
 
-# PRESENTER MODUL:
+# PRESENTER MODUL {{{
 # ------------------------------------------
 def present_run(inputvect = "", label_prior="",train_path="", test_path=""):
 	print "---- INPUT VECTOR ----"
@@ -522,11 +528,16 @@ def plot_results(y_pred,X_test,time_seq,save=0):
 	t_flat = [float(t) for t_sub in time_seq for t in t_sub]
 	keys = ['mean5','mean3','mean4']
 	x_flat = [[line[key] for key in keys] for x_sub in X_test for line in x_sub]
-	x_1,x_2,x_3 = map(list, zip(*x_flat))
+	# sort on time domain:
+	sorted_index = np.argsort(t_flat)
+	y_flat = [y_flat[index] for index in sorted_index] 
+	x_flat = [x_flat[index] for index in sorted_index]
+	t_flat = [t_flat[index] for index in sorted_index]
 
+	x_1,x_2,x_3 = map(list, zip(*x_flat))
 	dates=[dt.datetime.fromtimestamp(ts) for ts in t_flat]
 	datenums=md.date2num(dates)
-	plt.subplots_adjust(bottom=0.2)
+	# plt.subplots_adjust(bottom=0.2)
 	plt.xticks( rotation=25 )
 	ax=plt.gca()
 	xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
@@ -539,14 +550,16 @@ def plot_results(y_pred,X_test,time_seq,save=0):
 	#handles, labels = ax.get_legend_handles_labels()
 	#ax.legend(handles, labels)
 	if save:
-		plt.savefig(str(save) + ".pdf",dpi=300)
+		plt.savefig("plots/" + str(save) + ".pdf",dpi=300)
+		if save == 'plot':
+			plt.show()
 	else:
 		plt.show()
+	plt.clf()
 
-# ------------------------------------------
+# ------------------------------------------ }}}
 
-
-# FEATURE DATA: 
+# FEATURE DATA: {{{
 # ------------------------------------------
 def print_state_features(state_features):
 	for (attr, label), weight in state_features:
@@ -555,10 +568,9 @@ def print_state_features(state_features):
 		print_state_features(Counter(crf.state_features_).most_common(30))
 		print("\nTop negative:")
 		print_state_features(Counter(crf.state_features_).most_common()[-30:])
-# ------------------------------------------
+# ------------------------------------------ }}}
 
-
-# FULL RUNNERS:
+# FULL RUNNERS: {{{
 # ------------------------------------------
 
 def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
@@ -582,21 +594,21 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 
 
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},train_path="",test_path=""):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
 	no_lable_vs_lable = inputvect[1]
 	training_vs_testing = inputvect[2]
-
+	full_train_path = base_path + train_path
 	X_train = []
 	X_test = []
 	y_train = []
 	y_test = []
 	time_seq = []
+
+	train_data = load_raw_data(full_train_path)
 	print "len(train_data) = " + str(len(train_data))
-	
-	train_data = load_raw_data(train_path)
 	# Test data or not:
 	if test_path=="": 
 		print "len(data) = " + str(len(train_data))
@@ -614,33 +626,84 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 	crf = training(X_train, y_train)
 	#res = testing(crf,X_test,y_test)
 	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test,time_seq=time_seq)
+	res = testing(crf,X_test,time_seq=time_seq,save=save)
 
+def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0): 
+	starttime = time.time()
+	present_run(inputvect, label_prior,train_path, test_path)
+	data_frequency = 4
+	no_lable_vs_lable = inputvect[1]
+	training_vs_testing = inputvect[2]
+	full_train_path = base_path + train_path
+	X_train = []
+	X_test = []
+	y_train = []
+	y_test = []
+	time_seq = []
+
+    # Test data or not:
+    #if test_path=="": 
+    #   data = load_raw_data(train_path)
+    #   print "len(data) = " + str(len(data))
+    #   X,y,time_seq = format_raw_data(data,inputvect,label_prior)
+    #   print "len(X) = " + str(len(X))
+    #   X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+    #else:
+	train_data = load_raw_data(full_train_path)
+	print "len(train_data) = " + str(len(train_data))
+	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+	print "len(X) = " + str(len(X_train))
+	X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+	print "Shuffle data"
+	crf = training(X_train, y_train)
+	print "Train time: " + str(time.time()-starttime)
+	subjects = ['100','101','102','103','104','106','107','108','109','110']
+	for s in subjects:
+		full_test_path = base_path + s + "/" + test_path
+		print "-------------"
+		print s
+		test_data = load_raw_test_data(full_test_path)
+		print "len(test_data) = " + str(len(test_data))
+		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+		#res = testing(crf,X_test,y_test)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,time_seq=time_seq,save=str(save) + str(starttime)+"_"+str(s))
+
+# ------------------------------------------ }}}
+
+# MAIN AND SYS: {{{
 # ------------------------------------------
-
-
-# MAIN AND SYS:
-# ------------------------------------------
-def main():
+def main(inputargs):
 	"""Main entry point for the script."""
-	# run_crf()
+	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
+	inputchoise = inputargs[1]
+	if inputchoise == '1':
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		pass
 
-	# all data as test:
-	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
-	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
-	
-	# small trainingset:
-	train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
-	test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
-	run_crf_raw(train_path=train_path,test_path=test_path) 
+	# 2. Predict craving on marked events:
+	elif inputchoise == '2':
+		train_path = '**/ph3/'
+		test_path = 'ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
 
-	# train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph2/'
-	# run_crf_raw(train_path=train_path)
+	# 3. Predict craving on unmarkede data:
+	elif inputchoise == '3':
+		print "# 3. Predict craving on unmarkede data:"
+		train_path = '**/ph3/'
+		test_path = 'ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
 
 if __name__ == '__main__':
-	sys.exit(main())
+	sys.exit(main(sys.argv))
+# ------------------------------------------ }}}
 
-
+# Command line run: {{{
+# ------------------------------------------
 """ 
 import learning as lr
 import numpy as np
@@ -652,10 +715,10 @@ label_prior={1:[30,600],0:[600,7200]}
 train_path=""
 test_path=""
 
-train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph2/'
-test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
+train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
+# test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
 
-
+starttime = time.time()
 lr.present_run(inputvect, label_prior,train_path, test_path)
 data_frequency = 4
 no_lable_vs_lable = inputvect[1]
@@ -669,7 +732,9 @@ time_seq = []
 
 train_data = lr.load_raw_data(train_path)
 print "len(train_data) = " + str(len(train_data))
-X_train,y_train,normalization_constants = lr.format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+X_train,y_train,normalization_constants = lr.format_raw_data(train_data,inputvect,label_prior)
+X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
+
 print "len(X) = " + str(len(X_train))
 X_train,y_train = lr.shuffle_data(X_train,y_train,no_lable_vs_lable)
 print "Shuffle data"
@@ -683,29 +748,42 @@ print "Run time: " + str(time.time()-starttime)
 res = lr.testing(crf,X_test)
 
 
-y_flat = [y for y_sub in y_pred for y in y_sub]
-t_flat = [float(t) for t_sub in time_seq for t in t_sub]
-keys = ['mean5','mean3','mean4']
-x_flat = [[line[key] for key in keys]  for x_sub in X_test for line in x_sub]
-x_1,x_2,x_3 = map(list, zip(*x_flat))
 
-markers = [d for (d,y) in zip(datenums,y_flat) if y == '1']
 
-dates=[dt.datetime.fromtimestamp(ts) for ts in t_flat]
-datenums=md.date2num(dates)
+present_run(inputvect, label_prior,train_path, test_path)
+data_frequency = 4
+no_lable_vs_lable = inputvect[1]
+training_vs_testing = inputvect[2]
 
-plt.subplots_adjust(bottom=0.2)
-plt.xticks( rotation=25 )
-ax=plt.gca()
-xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
-ax.xaxis.set_major_formatter(xfmt)
-# plt.plot(datenums,y_flat,'r^',datenums,x_1,'b-',datenums,x_2,'b-',datenums,x_3,'g-')
-lines = plt.plot(datenums,x_1,'y-',datenums,x_2,'r-',datenums,x_3,'g-',linewidth=0.01)
-[ax.axvline(mark,0,1) for mark in markers]
-plt.setp(lines, linewidth=1.0)
-plt.ylabel('predicted smokes')
-plt.show()
-plt.savefig("aa.pdf",dpi=500)
-plt.show()
+X_train = []
+X_test = []
+y_train = []
+y_test = []
+time_seq = []
+
+train_data = load_raw_data(train_path)
+print "len(train_data) = " + str(len(train_data))
+# Test data or not:
+if test_path=="":
+print "len(data) = " + str(len(train_data))
+X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
+print "len(X) = " + str(len(X))
+X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+else:
+X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+print "len(X) = " + str(len(X_train))
+X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+print "Shuffle data"
+test_data = load_raw_test_data(test_path)
+print "len(test_data) = " + str(len(test_data))
+X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+crf = training(X_train, y_train)
+#res = testing(crf,X_test,y_test)
+print "Run time: " + str(time.time()-starttime)
+res = testing(crf,X_test,time_seq=time_seq)
+
+
 
 """
+# ------------------------------------------ }}}
+
