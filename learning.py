@@ -6,7 +6,7 @@ Dartmouth College
 Victor Bergelin
 
 """
-# SETUP {{{
+# SEhuffle_data(X,y,no_lable_vs_lable)UP {{{
 # ------------------------------------------
 
 from __future__ import division
@@ -91,7 +91,7 @@ def loadrawdata(file_name,headerrows=1):
 	return sequence_list,header
 # ------------------------------------------ }}}
 
-# DATA HANDLER FUNCTIONS {{{
+# LOW LEVEL DATA HELPERS {{{
 # ------------------------------------------
 def load_q_data(no_lable_vs_lable):
 	# standard directory: 
@@ -128,7 +128,7 @@ def load_q_data(no_lable_vs_lable):
 		print "Slicing to " + str(100/conversion_fraction) + "% of lable data"
 	return training_data
 
-def load_raw_data(filepath = ''):
+def load_raw_data(filepath = '',label_time_shift=0):
 	# 1. Check for markers:
 	list_of_markers = getfilelist(filepath+'markers*')
 	marker_data_headers = [loadrawdata(file_path,2) for file_path in list_of_markers]
@@ -147,7 +147,9 @@ def load_raw_data(filepath = ''):
 				continue
 			file_marks.append(mark[3])
 			s = mark[0][11:]+"-"+mark[3]
-			timestamps.append(time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()))
+			timeobj = time.mktime(datetime.datetime.strptime(s, "%Y_%m_%d-%H:%M:%S").timetuple()) + label_time_shift
+			timestamps.append(timeobj)
+
 		marker_data.append([mark[0]] + [mark[0][:10]] + [mark[0][11:]] + [file_marks] + [timestamps])
 	# 2. Load data from markers:
 	all_data = []
@@ -173,7 +175,6 @@ def load_raw_data(filepath = ''):
 			print set_name+"-"+log + " " + str(i)
 			print str(marker_set) + " " + filepath
 	return all_data
-
 
 def load_raw_test_data(filepath = ''):
 	list_of_test_data = getfilelist(filepath+'LOG*.csv')
@@ -432,7 +433,7 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 		y_pred = crf.predict(X_test)
 		sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
 		print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
-		plot_results(y_pred,X_test,time_seq,save)
+		# plot_results(y_pred,X_test,time_seq,save)
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
@@ -441,7 +442,7 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 
 # ------------------------------------------ }}}
 
-# DATA HELPERS {{{
+# HIGH LEVEL DATA HELPERS {{{
 # ------------------------------------------
 def shuffle_data(X,y,no_lable_vs_lable):
 	X, y = shuffle(X, y, random_state=0)
@@ -450,6 +451,8 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	for i, y_i in enumerate(y):
 		y_dict[y_i[0]].append(i)
 	# subsample
+	X_sub = []
+	y_sub = []
 	y_set = set(y_dict)
 	y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
 	quotent = y_dict_len[0] / sum(y_dict_len)
@@ -466,7 +469,7 @@ def shuffle_data(X,y,no_lable_vs_lable):
 		X_sub = [X[id] for id in id_new]
         y_sub = [y[id] for id in id_new]
 	# X, y = shuffle(X_sub, y_sub, random_state=0)
-	return X,y
+	return X_sub,y_sub
 
 def cut_data(X_sub,y_sub,training_vs_testing):
 	X, y = shuffle(X_sub, y_sub, random_state=0)
@@ -573,28 +576,8 @@ def print_state_features(state_features):
 # FULL RUNNERS: {{{
 # ------------------------------------------
 
-def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
-	# Parameters
-	sequence_length_sec = inputvect[0]
-	no_lable_vs_lable = inputvect[1]
-	training_vs_testing = inputvect[2]
-	sub_seq_length_sec = inputvect[3]
-	feature_length = sub_seq_length_sec*data_frequency
-	training_data = load_q_data(no_lable_vs_lable)
-	sequences,labels,info_list = data2seq(training_data,int(sequence_length_sec*data_frequency))
-	norm_sequences,normalization_constants = normalize_train(sequences)
-	X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True)
-	# Randomize and split:
-	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-	# Train algorithm:
-	crf = training(X_train, y_train)
-	crf = trainingRandomized(X_train, y_train)
-	# Test algorithm:
-	return testing(crf,X_test,y_test=y_test)
-
-
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
@@ -607,7 +590,7 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 	y_test = []
 	time_seq = []
 
-	train_data = load_raw_data(full_train_path)
+	train_data = load_raw_data(full_train_path,label_time_shift)
 	print "len(train_data) = " + str(len(train_data))
 	# Test data or not:
 	if test_path=="": 
@@ -615,6 +598,9 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
 		print "len(X) = " + str(len(X))
 		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+		crf = training(X_train, y_train)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,y_test=y_test,save=save)
 	else:
 		X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 		print "len(X) = " + str(len(X_train))
@@ -623,12 +609,12 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
-	crf = training(X_train, y_train)
-	#res = testing(crf,X_test,y_test)
-	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test,time_seq=time_seq,save=save)
+		crf = training(X_train, y_train)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,time_seq=time_seq,save=save)
+	
 
-def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0): 
+def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0): 
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
@@ -684,19 +670,25 @@ def main(inputargs):
 	# 2. Predict craving on marked events:
 	elif inputchoise == '2':
 		train_path = '**/ph3/'
-		test_path = 'ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
 		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
 
 	# 3. Predict craving on unmarkede data:
 	elif inputchoise == '3':
-		print "# 3. Predict craving on unmarkede data:"
 		train_path = '**/ph3/'
 		test_path = 'ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
 		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
+    
+	# 4. Predict on minutes before marked smoking:
+	elif inputchoise == '4':
+		train_path = '**/ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		label_time_shift = -400
+		print savestr + "\n"
+		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr,label_time_shift=label_time_shift)
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
@@ -707,6 +699,7 @@ if __name__ == '__main__':
 """ 
 import learning as lr
 import numpy as np
+import time
 
 inputvect = np.array([30, 0.7, 0.8, 5])
 subj_train=[]
@@ -714,15 +707,66 @@ subj_test=[]
 label_prior={1:[30,600],0:[600,7200]}
 train_path=""
 test_path=""
-
-train_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/**/ph3/'
-# test_path='/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/100/ph3/'
+base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
+train_path = '**/ph2/'
+full_train_path = base_path + train_path
 
 starttime = time.time()
 lr.present_run(inputvect, label_prior,train_path, test_path)
 data_frequency = 4
 no_lable_vs_lable = inputvect[1]
 training_vs_testing = inputvect[2]
+save=0
+label_time_shift=0
+
+X_train = []
+X_test = []
+y_train = []
+y_test = []
+time_seq = []
+savestr = "Manual test"
+label_time_shift = -400
+
+train_data = load_raw_data(full_train_path,label_time_shift)
+print "len(train_data) = " + str(len(train_data))
+# Test data or not:
+if test_path=="":
+	print "len(data) = " + str(len(train_data))
+	X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
+	print "len(X) = " + str(len(X))
+	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7)
+	crf = training(X_train, y_train)
+	print "Run time: " + str(time.time()-starttime)
+	res = testing(crf,X_test,y_test,save=save)
+else:
+	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+	print "len(X) = " + str(len(X_train))
+	X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+	print "Shuffle data"
+	test_data = load_raw_test_data(test_path)
+	print "len(test_data) = " + str(len(test_data))
+	X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+	crf = training(X_train, y_train)
+	print "Run time: " + str(time.time()-starttime)
+	res = testing(crf,X_test,time_seq=time_seq,save=save)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 X_train = []
 X_test = []
