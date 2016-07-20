@@ -627,33 +627,33 @@ def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],s
 	y_test = []
 	time_seq = []
 
-    # Test data or not:
-    #if test_path=="": 
-    #   data = load_raw_data(train_path)
-    #   print "len(data) = " + str(len(data))
-    #   X,y,time_seq = format_raw_data(data,inputvect,label_prior)
-    #   print "len(X) = " + str(len(X))
-    #   X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-    #else:
-	train_data = load_raw_data(full_train_path)
+	train_data = load_raw_data(full_train_path,label_time_shift)
+	print "1. Train time: " + str(time.time()-starttime)
 	print "len(train_data) = " + str(len(train_data))
 	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+	print "2. Train time: " + str(time.time()-starttime)
 	print "len(X) = " + str(len(X_train))
 	X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+	print "3. Train time: " + str(time.time()-starttime)
 	print "Shuffle data"
 	crf = training(X_train, y_train)
-	print "Train time: " + str(time.time()-starttime)
+	print "4. Train time: " + str(time.time()-starttime)
 	subjects = ['100','101','102','103','104','106','107','108','109','110']
 	for s in subjects:
 		full_test_path = base_path + s + "/" + test_path
 		print "-------------"
+		print "5. Train time:" + str(time.time()-starttime)
 		print s
 		test_data = load_raw_test_data(full_test_path)
 		print "len(test_data) = " + str(len(test_data))
+		print "6. Run time: " + str(time.time()-starttime)
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
 		#res = testing(crf,X_test,y_test)
 		print "Run time: " + str(time.time()-starttime)
-		res = testing(crf,X_test,time_seq=time_seq,save=str(save) + str(starttime)+"_"+str(s))
+		if save:
+			res = testing(crf,X_test,time_seq=time_seq,save=str(save) + str(starttime)+"_"+str(s))
+		else:
+			res = testing(crf,X_test,y_test=y_test,save=save)
 
 # ------------------------------------------ }}}
 
@@ -663,35 +663,79 @@ def main(inputargs):
 	"""Main entry point for the script."""
 	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 	inputchoise = inputargs[1]
-	if inputchoise == '1':
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		pass
+	
 
-	# 2. Predict craving on marked events:
-	elif inputchoise == '2':
-		train_path = '**/ph3/'
+	# 2a. NORMLAL PREDICTION SMOKING
+	if inputchoise == '2a1':
+		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
 		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
 
-	# 3. Predict craving on unmarkede data:
-	elif inputchoise == '3':
-		train_path = '**/ph3/'
-		test_path = 'ph2/'
+	# 2b. Normal prediction
+	elif inputchoise == '2a2':
+		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
-    
-	# 4. Predict on minutes before marked smoking:
-	elif inputchoise == '4':
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
+
+	# 2b. Predict smoking without markers 
+	elif inputchoise == '2b':
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		train_path = '**/ph2/'
+		test_path = 'ph3/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,test_path=test_path,base_path=base_path,save=savestr)
+
+	# 3.1  Predict on minutes before marked smoking:
+	elif inputchoise == '31':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		label_time_shift = -400
 		print savestr + "\n"
 		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr,label_time_shift=label_time_shift)
 
+	# 3.2.
+	elif inputchoise == '32':
+		train_path = '**/ph2/'
+		test_path = 'ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		label_time_shift = -400
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr,label_time_shift=label_time_shift)
+
+	# 4a1. Predict craving on marked events:
+	elif inputchoise == '4a1':
+		train_path = '**/ph3/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
+
+	# 4a2. distribution of cravings over individuals
+	elif inputchoise == '4a2':
+		train_path = '**/ph3/'
+		test_path = 'ph3/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,test_path=test_path,base_path=base_path)
+
+	# 4a3. Feature significance for craving data
+	
+	# 4b. Predict craving on unmarkede data:
+	elif inputchoise == '4b':
+		train_path = '**/ph3/'
+		test_path = 'ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
+
+	else:
+		print "No command found, try again."
+
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
+
 # ------------------------------------------ }}}
 
 # Command line run: {{{
@@ -830,4 +874,5 @@ res = testing(crf,X_test,time_seq=time_seq)
 
 """
 # ------------------------------------------ }}}
+
 
