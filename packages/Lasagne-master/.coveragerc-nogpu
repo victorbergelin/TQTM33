@@ -1,6 +1,0 @@
-[run]
-omit =
-    lasagne/tests/*
-    lasagne/layers/corrmm.py
-    lasagne/layers/cuda_convnet.py
-    lasagne/layers/dnn.py
