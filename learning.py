@@ -89,6 +89,46 @@ def loadrawdata(file_name,headerrows=1):
 				sequence_list.append(list(row))
 		# print header
 	return sequence_list,header
+
+def full_load_raw_wrapper():
+	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
+	train_path = '107/ph2/'
+	X_train,X_test,y_train,y_test = full_load_raw(train_path=train_path,base_path=base_path)
+	return (X_train,y_train),(X_test,y_test)
+
+def full_load_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
+    starttime = time.time()
+    present_run(inputvect, label_prior,train_path, test_path)
+    data_frequency = 4
+    no_lable_vs_lable = inputvect[1]
+    training_vs_testing = inputvect[2]
+    full_train_path = base_path + train_path
+    X_train = []
+    X_test = []
+    y_train = []
+    y_test = []
+    time_seq = []
+    
+    train_data = load_raw_data(full_train_path,label_time_shift)
+    print "len(train_data) = " + str(len(train_data))
+    # Test data or not:
+    if test_path=="": 
+        print "len(data) = " + str(len(train_data))
+        X,y,time_seq = format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
+        print "len(X) = " + str(len(X))
+        X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+        print "Run time: " + str(time.time()-starttime)
+    else:
+        X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+        print "len(X) = " + str(len(X_train))
+        X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+        print "Shuffle data"
+        test_data = load_raw_test_data(test_path)
+        print "len(test_data) = " + str(len(test_data))
+        X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+        print "Run time: " + str(time.time()-starttime)
+	return X_train,X_test,y_train,y_test
+
 # ------------------------------------------ }}}
 
 # LOW LEVEL DATA HELPERS {{{
@@ -342,6 +382,9 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict,info_
 		x_train.append(features)
 		y_train.append(label_set)
 		info_seq_list.append(info_seq)
+	if not export_to_list_or_dict:
+		x_train = np.array(x_train)
+		y_train = np.array(y_train)
 	return x_train,y_train,info_seq_list
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
@@ -485,7 +528,7 @@ def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
 	X_train,X_test,y_train,y_test = cut_data(X,y,training_vs_testing)
 	return X_train,X_test,y_train,y_test
 
-def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
+def format_raw_data(data, inputvect,label_prior,normalization_constants=0,export_to_list_or_dict=True):
 	sequence_length_sec = inputvect[0]
 	no_lable_vs_lable = inputvect[1]
 	training_vs_testing = inputvect[2]
@@ -496,17 +539,17 @@ def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
 	print "len sequences = " + str(len(sequences))
 	if normalization_constants == 1:
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
+		X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
 		return X,y,normalization_constants
 	elif isinstance(normalization_constants,int):
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
 		return X,y,time_seq
 	else:
 		# USE normalization_constants in normalize_test:
 		# norm_sequences,normalization_constants = normalize_train(sequences)
 		norm_sequences = normalize_test(sequences, normalization_constants)
-		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
 		return X,y,time_seq
 # ------------------------------------------ }}}
 
@@ -672,7 +715,7 @@ def main(inputargs):
 		print savestr + "\n"
 		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
 
-	# 2b. Normal prediction
+	# 2b. Normal prediction subjects
 	elif inputchoise == '2a2':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
@@ -869,6 +912,27 @@ crf = training(X_train, y_train)
 #res = testing(crf,X_test,y_test)
 print "Run time: " + str(time.time()-starttime)
 res = testing(crf,X_test,time_seq=time_seq)
+
+
+LOAD TEST DATA:
+
+import learning as lr
+import numpy as np
+inputvect = np.array([30, 0.7, 0.8, 2])
+data_frequency = 4
+label_prior={1:[30,600],0:[600,7200]}
+train_path = '107/ph2/'
+base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
+full_train_path = base_path + train_path
+training_vs_testing = inputvect[2]
+no_lable_vs_lable = inputvect[1]
+
+X,y,time_seq = lr.format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
+
+X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
+
+
+
 
 
 
