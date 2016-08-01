@@ -2,8 +2,8 @@ import pandas as pd
 from random import random
 
 flow = (list(range(1,10,1)) + list(range(10,1,-1)))*1000  
-pdata = pd.DataFrame({"a":flow, "b":flow})  
-pdata.b = pdata.b.shift(9)  
+pdata = pd.DataFrame({"a":flow}) # , "b":flow})  
+#pdata.b = pdata.b.shift(9)  
 data = pdata.iloc[10:] * random()  # some noise  
 
 import numpy as np
@@ -33,8 +33,8 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Activation  
 from keras.layers.recurrent import LSTM
 
-in_neurons = 2  
-out_neurons = 2  
+in_neurons = 1 # 2  
+out_neurons = 1 # 2 
 hidden_neurons = 20
 
 model = Sequential()  
@@ -44,6 +44,8 @@ model.add(Activation("linear"))
 model.compile(loss="mean_squared_error", optimizer="rmsprop")  
 
 (X_train, y_train), (X_test, y_test) = train_test_split(data)  # retrieve data
+
+
 model.fit(X_train, y_train, batch_size=450, nb_epoch=10, validation_split=0.05)  
 
 predicted = model.predict(X_test)  
