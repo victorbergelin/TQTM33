@@ -57,7 +57,7 @@ random.seed(4)
 
 # ------------------------------------------ }}}
 
-# HELPER FUNCITONS {{{
+# GET DATA {{{
 # ------------------------------------------
 def getfilelist(directory):
 	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.']
@@ -771,7 +771,7 @@ time_seq = []
 savestr = "Manual test"
 label_time_shift = -400
 
-train_data = load_raw_data(full_train_path,label_time_shift)
+train_data = lr.load_raw_data(full_train_path,label_time_shift)
 print "len(train_data) = " + str(len(train_data))
 # Test data or not:
 if test_path=="":
