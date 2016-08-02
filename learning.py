@@ -92,7 +92,7 @@ def loadrawdata(file_name,headerrows=1):
 
 def full_load_raw_wrapper():
 	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
-	train_path = '107/ph2/'
+	train_path = '**/ph2/'
 	X_train,X_test,y_train,y_test = full_load_raw(train_path=train_path,base_path=base_path)
 	return (X_train,y_train),(X_test,y_test)
 
