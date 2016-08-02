@@ -9,12 +9,16 @@ Victor Bergelin
 
 import pandas as pd  
 import matplotlib.pyplot as plt
-from random import random
+def semi_dummy_data():
 
-flow = (list(range(1,10,1)) + list(range(10,1,-1)))*1000  
-pdata = pd.DataFrame({"a":flow}) # , "b":flow})  
-#pdata.b = pdata.b.shift(9)  
-data = pdata.iloc[10:] * random()  # some noise  
+
+	from random import random
+
+	flow = (list(range(1,10,1)) + list(range(10,1,-1)))*1000  
+	pdata = pd.DataFrame({"a":flow}) # , "b":flow})  
+	#pdata.b = pdata.b.shift(9)  
+	data = pdata.iloc[10:] * random()  # some noise  
+	return data
 
 import numpy as np
 np.random.seed(42)
@@ -60,7 +64,7 @@ in_neurons = 1
 out_neurons = 1 # 2 
 hidden_neurons = 50
 
-batch_size = 450
+batch_size = 45
 nb_epoch = 5
 
 def test_baseline(X_train=[], y_train=[], X_test=[], y_test=[]):
@@ -97,6 +101,16 @@ def test_baseline(X_train=[], y_train=[], X_test=[], y_test=[]):
 	
 
 def test_morelayers(X_train=[], y_train=[], X_test=[], y_test=[]):
+
+	timesteps = 100
+	in_neurons = 20
+	nb_classes = 1
+	if(X_train == []):
+		(X_train, y_train), (X_test, y_test) = dummy_data(timesteps,in_neurons, nb_classes)
+	else:
+		in_neurons = len(X_train[0][0])
+		timesteps = len(X_train[0])
+
 	model = Sequential()  
 	# model.add(LSTM(output_dim=hidden_neurons, input_dim=in_neurons, return_sequences=False)) 
 	model.add(LSTM(output_dim=hidden_neurons, input_dim=in_neurons, return_sequences=True)) 
@@ -106,8 +120,6 @@ def test_morelayers(X_train=[], y_train=[], X_test=[], y_test=[]):
 	
 	# 3 model.add(Activation("linear"))  
 	model.add(Activation("sigmoid"))  
-	# 2 model.compile(loss="mean_squared_error", optimizer="rmsprop")  
-	# 4 model.compile(class_mode='binary', loss="mean_squared_error", optimizer="rmsprop")  
 	model.compile(class_mode='binary', loss='binary_crossentropy', optimizer='rmsprop')
 	# 7
 	(X_train, y_train), (X_test, y_test) = train_test_split(data)  # retrieve data
@@ -118,7 +130,7 @@ def test_morelayers(X_train=[], y_train=[], X_test=[], y_test=[]):
 	"""
 	# 3 model.fit(X_train, y_train, batch_size=450, nb_epoch=10, validation_split=0.05)  
 	# 6 model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=10, validation_split=0.05, show_accuracy=True)  
-	model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=nb_epoch, validation_data=(X_test, y_test), validation_split=0.05, show_accuracy=True)
+	model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=nb_epoch, validation_data=(X_test, y_test), validation_split=0.05, show_accuracy=True,shuffle=False)
 
 	score, acc = model.evaluate(X_test, y_test, batch_size=batch_size)
 	print score
@@ -134,14 +146,21 @@ def test_morelayers(X_train=[], y_train=[], X_test=[], y_test=[]):
 	plt.show()
 
 
-
+"""
 import learning as lr
 import numpy as np
-label_time_shift = 0
-inputvect = np.array([30, 0.7, 0.8, 2])
+label_time_shift = 1 # compensate for button press interference
+
+seqlength = 30
+seqseqlength = 2
+training_vs_testing = 0.8
+no_lable_vs_lable = 0.7 # not working now
+
+
+inputvect = np.array([seqlength, 0.7, 0.8, seqseqlength])
 data_frequency = 4
 label_prior={1:[30,600],0:[600,7200]}
-train_path = '107/ph2/'
+train_path = '**/ph2/'
 base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 full_train_path = base_path + train_path
 training_vs_testing = inputvect[2]
@@ -149,13 +168,66 @@ no_lable_vs_lable = inputvect[1]
  
 train_data = lr.load_raw_data(full_train_path,label_time_shift)
 X,y,time_seq = lr.format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
- 
-X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
 
-test_baseline(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
-# test_morelayers()
+X_train,X_test,y_train,y_test = lr.cut_data(X,y,training_vs_testing)
+# X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
+X_train = np.array(X_train)
+X_test = np.array(X_test)
+y_train = np.array([int(max(y_t)) for y_t in y_train])
+y_test = np.array([int(max(y_t)) for y_t in y_test])
+import keras_prediction as kp
+
+
+kp.test_baseline(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
+
+
+kp.test_morelayers(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
+
+
+
+timesteps = 100
+in_neurons = 20
+nb_classes = 1
+if(X_train == []):
+	(X_train, y_train), (X_test, y_test) = dummy_data(timesteps,in_neurons, nb_classes)
+else:
+	in_neurons = len(X_train[0][0])
+	timesteps = len(X_train[0])
+
+model = Sequential()  
+# model.add(LSTM(output_dim=hidden_neurons, input_dim=in_neurons, return_sequences=False)) 
+model.add(LSTM(output_dim=hidden_neurons, input_dim=in_neurons, return_sequences=True)) 
+model.add(LSTM(output_dim=hidden_neurons, input_dim=hidden_neurons, return_sequences=True))
+model.add(LSTM(output_dim=hidden_neurons, input_dim=hidden_neurons, return_sequences=False))
+model.add(Dense(output_dim=out_neurons, input_dim=hidden_neurons))
+
+# 3 model.add(Activation("linear"))  
+model.add(Activation("sigmoid"))  
+model.compile(class_mode='binary', loss='binary_crossentropy', optimizer='rmsprop')
+(X_train, y_train), (X_test, y_test) = train_test_split(data)  # retrieve data
+model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=nb_epoch, validation_data=(X_test, y_test), validation_split=0.05, show_accuracy=True,shuffle=False)
+
+score, acc = model.evaluate(X_test, y_test, batch_size=batch_size)
+print score
+print acc
+
+predicted = model.predict(X_test)  
+
+# and maybe plot it
+#pd.DataFrame(predicted[:100]).to_csv("predicted.csv")  
+#pd.DataFrame(y_test[:100]).to_csv("test_data.csv") 
+pd.DataFrame(y_test[:100]).plot()  
+pd.DataFrame(predicted[:100]).plot()
+plt.show()
+
+
+
 
 """
+
+"""
+import keras_prediction as kp
+kp.test_baseline(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
 
 HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint
 

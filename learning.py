@@ -127,6 +127,11 @@ def full_load_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_tes
         print "len(test_data) = " + str(len(test_data))
         X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
         print "Run time: " + str(time.time()-starttime)
+	X_train = np.array(X_train)
+	y_train = np.array(y_train)
+	X_test = np.array(X_test)
+	y_test = np.array(y_test)
+
 	return X_train,X_test,y_train,y_test
 
 # ------------------------------------------ }}}
@@ -382,9 +387,6 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict,info_
 		x_train.append(features)
 		y_train.append(label_set)
 		info_seq_list.append(info_seq)
-	if not export_to_list_or_dict:
-		x_train = np.array(x_train)
-		y_train = np.array(y_train)
 	return x_train,y_train,info_seq_list
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
