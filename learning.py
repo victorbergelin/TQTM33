@@ -669,10 +669,11 @@ def main(inputargs):
 
 	# 2. Predict craving on marked events:
 	elif inputchoise == '2':
-		train_path = '**/ph3/'
+		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
+		inputvect = np.array([60, 0.7, 0.8, 5])
+		run_crf_raw(inputvect=inputvect,train_path=train_path,base_path=base_path,save=savestr)
 
 	# 3. Predict craving on unmarkede data:
 	elif inputchoise == '3':
