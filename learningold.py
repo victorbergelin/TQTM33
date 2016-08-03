@@ -57,7 +57,7 @@ random.seed(4)
 
 # ------------------------------------------ }}}
 
-# GET DATA {{{
+# HELPER FUNCITONS {{{
 # ------------------------------------------
 def getfilelist(directory):
 	list_of_files = [join(directory, f) for f in glob.glob(directory) if isfile(join(directory, f)) and f[0]!='.']
@@ -89,51 +89,6 @@ def loadrawdata(file_name,headerrows=1):
 				sequence_list.append(list(row))
 		# print header
 	return sequence_list,header
-
-def full_load_raw_wrapper():
-	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
-	train_path = '**/ph2/'
-	X_train,X_test,y_train,y_test = full_load_raw(train_path=train_path,base_path=base_path)
-	return (X_train,y_train),(X_test,y_test)
-
-def full_load_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
-    starttime = time.time()
-    present_run(inputvect, label_prior,train_path, test_path)
-    data_frequency = 4
-    no_lable_vs_lable = inputvect[1]
-    training_vs_testing = inputvect[2]
-    full_train_path = base_path + train_path
-    X_train = []
-    X_test = []
-    y_train = []
-    y_test = []
-    time_seq = []
-    
-    train_data = load_raw_data(full_train_path,label_time_shift)
-    print "len(train_data) = " + str(len(train_data))
-    # Test data or not:
-    if test_path=="": 
-        print "len(data) = " + str(len(train_data))
-        X,y,time_seq = format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
-        print "len(X) = " + str(len(X))
-        X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
-        print "Run time: " + str(time.time()-starttime)
-    else:
-        X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
-        print "len(X) = " + str(len(X_train))
-        X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
-        print "Shuffle data"
-        test_data = load_raw_test_data(test_path)
-        print "len(test_data) = " + str(len(test_data))
-        X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
-        print "Run time: " + str(time.time()-starttime)
-	X_train = np.array(X_train)
-	y_train = np.array(y_train)
-	X_test = np.array(X_test)
-	y_test = np.array(y_test)
-
-	return X_train,X_test,y_train,y_test
-
 # ------------------------------------------ }}}
 
 # LOW LEVEL DATA HELPERS {{{
@@ -393,8 +348,6 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
 	feature_data = np.c_[feature_data,magnitude] 
-	feature_data = feature_data[:,[3,4]]
-	# feature_data hold all features in columns
 	#features
 	mean = np.mean(feature_data,0)
 	variance = np.std(feature_data,0)
@@ -532,7 +485,7 @@ def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
 	X_train,X_test,y_train,y_test = cut_data(X,y,training_vs_testing)
 	return X_train,X_test,y_train,y_test
 
-def format_raw_data(data, inputvect,label_prior,normalization_constants=0,export_to_list_or_dict=True):
+def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
 	sequence_length_sec = inputvect[0]
 	no_lable_vs_lable = inputvect[1]
 	training_vs_testing = inputvect[2]
@@ -543,17 +496,17 @@ def format_raw_data(data, inputvect,label_prior,normalization_constants=0,export
 	print "len sequences = " + str(len(sequences))
 	if normalization_constants == 1:
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
+		X,y,_ = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
 		return X,y,normalization_constants
 	elif isinstance(normalization_constants,int):
 		norm_sequences,normalization_constants = normalize_train(sequences)
-		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
 		return X,y,time_seq
 	else:
 		# USE normalization_constants in normalize_test:
 		# norm_sequences,normalization_constants = normalize_train(sequences)
 		norm_sequences = normalize_test(sequences, normalization_constants)
-		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,export_to_list_or_dict,info_list)
+		X,y,time_seq = seq2seqfeatures(norm_sequences, labels, sub_seq_length_sec*data_frequency,True,info_list)
 		return X,y,time_seq
 # ------------------------------------------ }}}
 
@@ -674,33 +627,33 @@ def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],s
 	y_test = []
 	time_seq = []
 
-	train_data = load_raw_data(full_train_path,label_time_shift)
-	print "1. Train time: " + str(time.time()-starttime)
+    # Test data or not:
+    #if test_path=="": 
+    #   data = load_raw_data(train_path)
+    #   print "len(data) = " + str(len(data))
+    #   X,y,time_seq = format_raw_data(data,inputvect,label_prior)
+    #   print "len(X) = " + str(len(X))
+    #   X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+    #else:
+	train_data = load_raw_data(full_train_path)
 	print "len(train_data) = " + str(len(train_data))
 	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
-	print "2. Train time: " + str(time.time()-starttime)
 	print "len(X) = " + str(len(X_train))
 	X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
-	print "3. Train time: " + str(time.time()-starttime)
 	print "Shuffle data"
 	crf = training(X_train, y_train)
-	print "4. Train time: " + str(time.time()-starttime)
+	print "Train time: " + str(time.time()-starttime)
 	subjects = ['100','101','102','103','104','106','107','108','109','110']
 	for s in subjects:
 		full_test_path = base_path + s + "/" + test_path
 		print "-------------"
-		print "5. Train time:" + str(time.time()-starttime)
 		print s
 		test_data = load_raw_test_data(full_test_path)
 		print "len(test_data) = " + str(len(test_data))
-		print "6. Run time: " + str(time.time()-starttime)
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
 		#res = testing(crf,X_test,y_test)
 		print "Run time: " + str(time.time()-starttime)
-		if save:
-			res = testing(crf,X_test,time_seq=time_seq,save=str(save) + str(starttime)+"_"+str(s))
-		else:
-			res = testing(crf,X_test,y_test=y_test,save=save)
+		res = testing(crf,X_test,time_seq=time_seq,save=str(save) + str(starttime)+"_"+str(s))
 
 # ------------------------------------------ }}}
 
@@ -710,91 +663,36 @@ def main(inputargs):
 	"""Main entry point for the script."""
 	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 	inputchoise = inputargs[1]
-	
+	if inputchoise == '1':
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		pass
 
-	# 2a. NORMLAL PREDICTION SMOKING
-	if inputchoise == '2a1':
+	# 2. Predict craving on marked events:
+	elif inputchoise == '2':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
+		inputvect = np.array([60, 0.7, 0.8, 5])
+		run_crf_raw(inputvect=inputvect,train_path=train_path,base_path=base_path,save=savestr)
 
-	# 2b. Normal prediction subjects
-	elif inputchoise == '2a2':
-		train_path = '**/ph2/'
+	# 3. Predict craving on unmarkede data:
+	elif inputchoise == '3':
+		train_path = '**/ph3/'
+		test_path = 'ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
-
-
-	# 2a3. Normal prediction subjects
-	elif inputchoise == '2a2':
-		train_path = '**/ph2/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
-
-
-
-
-
-	# 2b. Predict smoking without markers 
-	elif inputchoise == '2b':
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		train_path = '**/ph2/'
-		test_path = 'ph3/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,test_path=test_path,base_path=base_path,save=savestr)
-
-	# 3.1  Predict on minutes before marked smoking:
-	elif inputchoise == '31':
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
+    
+	# 4. Predict on minutes before marked smoking:
+	elif inputchoise == '4':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		label_time_shift = -400
 		print savestr + "\n"
 		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr,label_time_shift=label_time_shift)
 
-	# 3.2.
-	elif inputchoise == '32':
-		train_path = '**/ph2/'
-		test_path = 'ph2/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		label_time_shift = -400
-		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr,label_time_shift=label_time_shift)
-
-	# 4a1. Predict craving on marked events:
-	elif inputchoise == '4a1':
-		train_path = '**/ph3/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		print savestr + "\n"
-		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
-
-	# 4a2. distribution of cravings over individuals
-	elif inputchoise == '4a2':
-		train_path = '**/ph3/'
-		test_path = 'ph3/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,test_path=test_path,base_path=base_path)
-
-	# 4a3. Feature significance for craving data
-	
-	# 4b. Predict craving on unmarkede data:
-	elif inputchoise == '4b':
-		train_path = '**/ph3/'
-		test_path = 'ph2/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
-		print savestr + "\n"
-		run_crf_raw_subjects(train_path=train_path,base_path=base_path,test_path=test_path,save=savestr)
-
-	else:
-		print "No command found, try again."
-
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
-
 # ------------------------------------------ }}}
 
 # Command line run: {{{
@@ -830,7 +728,7 @@ time_seq = []
 savestr = "Manual test"
 label_time_shift = -400
 
-train_data = lr.load_raw_data(full_train_path,label_time_shift)
+train_data = load_raw_data(full_train_path,label_time_shift)
 print "len(train_data) = " + str(len(train_data))
 # Test data or not:
 if test_path=="":
@@ -930,29 +828,7 @@ print "Run time: " + str(time.time()-starttime)
 res = testing(crf,X_test,time_seq=time_seq)
 
 
-LOAD TEST DATA:
-
-import learning as lr
-import numpy as np
-inputvect = np.array([30, 0.7, 0.8, 2])
-data_frequency = 4
-label_prior={1:[30,600],0:[600,7200]}
-train_path = '107/ph2/'
-base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
-full_train_path = base_path + train_path
-training_vs_testing = inputvect[2]
-no_lable_vs_lable = inputvect[1]
-
-X,y,time_seq = lr.format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
-
-X_train,X_test,y_train,y_test = lr.shuffle_and_cut(X,y,training_vs_testing)
-
-
-
-
-
 
 """
 # ------------------------------------------ }}}
-
 
