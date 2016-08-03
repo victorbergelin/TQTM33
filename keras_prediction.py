@@ -6,15 +6,66 @@ Working with Deep learning for prediction of addictive behaviors
 Victor Bergelin
 
 """
+
 import sys
 import pandas as pd  
 import matplotlib.pyplot as plt
 from random import random
 import numpy as np
+
+from keras.models import Sequential  
+from keras.layers.core import Dense, Activation  
+from keras.layers.recurrent import LSTM
+
+import learning as lr
+
+# non changable parameters:
+out_neurons = 1
+data_frequency = 4
+base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 np.random.seed(42)
 
-# Create data: {{{
+"""
+def load_data():
+	load_data = pd.HDFStore("datafile.hdf")
+	X_train = load_data["X_train"].values
+	y_train = load_data["y_train"].values
+	X_test = load_data["X_test"].values
+	y_test = load_data["y_test"].values
+	return X_train,y_train,X_test,y_test
+
+def save_data():
+	label_time_shift = 2 # compensate for button press interference
+	seqlength = 60
+	seqseqlength = 2
+	training_vs_testing = 0.8
+	no_lable_vs_lable = 0.7 # not working now
+	label_prior = {1:[30,600],0:[600,7200]}
+	train_path = '**/ph2/' # train_path = '100/ph2/'
+	inputvect = np.array([seqlength, no_lable_vs_lable, training_vs_testing, seqseqlength])
+	full_train_path = base_path + train_path
+
+	# Get data 
+	train_data = lr.load_raw_data(full_train_path,label_time_shift)
+	X,y,time_seq = lr.format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
+	X_train,X_test,y_train,y_test = lr.cut_data(X,y,training_vs_testing)
+	X_train = np.array(X_train)
+	X_test = np.array(X_test)
+	y_train = np.array([int(max(y_t)) for y_t in y_train])
+	y_test = np.array([int(max(y_t)) for y_t in y_test])
+
+	storage = pd.HDFStore("datafile.hdf")
+	storage.append("X_train",pd.DataFrame(X_train))
+	storage.append("y_train",pd.DataFrame(y_train))
+	storage.append("X_test",pd.DataFrame(X_test))
+	storage.append("y_test",pd.DataFrame(y_test))
+	storage.close()
+"""
+
+# Data: {{{
 # ------------------------------------------
+
+
 
 def semi_dummy_data():
 
@@ -58,15 +109,6 @@ def train_test_split(df, test_size=0.1):
     return (X_train, y_train), (X_test, y_test)
 
 # ------------------------------------------ }}}
-
-from keras.models import Sequential  
-from keras.layers.core import Dense, Activation  
-from keras.layers.recurrent import LSTM
-
-# non changable parameters:
-out_neurons = 1
-data_frequency = 4
-base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 
 # Full model functions: {{{ 
 # ------------------------------------------
@@ -154,7 +196,7 @@ def simple_model(in_neurons, hidden_neurons):
 	model.compile(class_mode='binary', loss='binary_crossentropy', optimizer='rmsprop')
 	return model
 
-def simple_model(in_neurons, hidden_neurons):
+def complex_model(in_neurons, hidden_neurons):
 	model = Sequential()  
 	model.add(LSTM(output_dim=hidden_neurons, input_dim=in_neurons, return_sequences=True)) 
 	model.add(LSTM(output_dim=hidden_neurons, input_dim=hidden_neurons, return_sequences=True))
@@ -164,23 +206,33 @@ def simple_model(in_neurons, hidden_neurons):
 	model.compile(class_mode='binary', loss='binary_crossentropy', optimizer='rmsprop')
 	return model
 
+def dropout_model(in_neurons, hidden_neurons):
+	model = Sequential()  
+	model.add(LSTM(in_neurons, 100, return_sequences=True)) 
+	model.add(LSTM(100, 300, return_sequences=True)) 
+	model.add(Dropout(0.2))
+	model.add(LSTM(300,200, return_sequences=False))
+	model.add(Dropout(0.2))
+	model.add(Dense(output_dim=1, input_dim=200))
+	model.add(Activation("sigmoid"))  
+	model.compile(class_mode='binary', loss='binary_crossentropy', optimizer='rmsprop')
+	return model
 # ------------------------------------------ }}}
 
 # Main and sys: {{{ 
 # ------------------------------------------
 def main(inputargs):
-	import learning as lr
-	import numpy as np
+	# {{{ not needed
+	# Save settings
 
 	# Tuning parameters
-	label_time_shift = 1 # compensate for button press interference
-	seqlength = 30
-	seqseqlength = 2
+	label_time_shift = -400 # compensate for button press interference
+	seqlength = 300
+	seqseqlength = 3
 	training_vs_testing = 0.8
 	no_lable_vs_lable = 0.7 # not working now
 	label_prior = {1:[30,600],0:[600,7200]}
 	class_weights = {0: 1, 1: 20}
-	hidden_neurons = 50
 	# -----------------
 
 	# Test parameters
@@ -190,7 +242,7 @@ def main(inputargs):
 
 	# Test setup
 	batch_size = 450
-	nb_epoch = 50
+	nb_epoch = 250
 	# -----------------
 	
 	# Test setup auto
@@ -203,20 +255,23 @@ def main(inputargs):
 	# Get data 
 	train_data = lr.load_raw_data(full_train_path,label_time_shift)
 	X,y,time_seq = lr.format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
-	# Class_weights?
-	#X.y = lr.equalize_data(X,y,no_lable_vs_lable)
 	X_train,X_test,y_train,y_test = lr.cut_data(X,y,training_vs_testing)
 	X_train = np.array(X_train)
 	X_test = np.array(X_test)
 	y_train = np.array([int(max(y_t)) for y_t in y_train])
 	y_test = np.array([int(max(y_t)) for y_t in y_test])
+	
+	# }}}
+	X_train,y_train,X_test,y_test = load_data()
 	in_neurons = len(X_train[0][0])
 	timesteps = len(X_train[0])
 	# -----------------
 
 	# Setup and train model
 	# model = simple_model(in_neurons, hidden_neurons)
-	model = complex_model(in_neurons, hidden_neurons)
+	# model = complex_model(in_neurons, hidden_neurons)
+	model = dropout_model(in_neurons, hidden_neurons)
+
 	model.fit(X_train, y_train, batch_size=batch_size, nb_epoch=nb_epoch, validation_data=(X_test, y_test), validation_split=0.05, show_accuracy=True,shuffle=False, class_weight=class_weights)
 	# -----------------
 	predicted = model.predict(X_test)
@@ -226,9 +281,6 @@ def main(inputargs):
 		pd.DataFrame(y_test[:500]).plot()
 		pd.DataFrame(predicted[:500]).plot()
 		plt.show()
-
-# test_baseline(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
-# test_morelayers(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))

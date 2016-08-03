@@ -393,6 +393,8 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
 	feature_data = np.c_[feature_data,magnitude] 
+	feature_data = feature_data[:,[3,4]]
+	# feature_data hold all features in columns
 	#features
 	mean = np.mean(feature_data,0)
 	variance = np.std(feature_data,0)
@@ -723,6 +725,18 @@ def main(inputargs):
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
 		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
+
+
+	# 2a3. Normal prediction subjects
+	elif inputchoise == '2a2':
+		train_path = '**/ph2/'
+		savestr = str(inputchoise)+"-"+inputargs[2]
+		print savestr + "\n"
+		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
+
+
+
+
 
 	# 2b. Predict smoking without markers 
 	elif inputchoise == '2b':
