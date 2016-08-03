@@ -393,7 +393,9 @@ def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
 	feature_data = np.c_[feature_data,magnitude] 
-	feature_data = feature_data[:,[3,4]]
+
+	# HOLD OUT FEATURES: ***
+	# feature_data = feature_data[:,[3,4]]
 	# feature_data hold all features in columns
 	#features
 	mean = np.mean(feature_data,0)
@@ -624,7 +626,7 @@ def print_state_features(state_features):
 # ------------------------------------------
 
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
+def run_crf_raw(inputvect = np.array([30, 0.6, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
