@@ -6,7 +6,7 @@ Dartmouth College
 Victor Bergelin
 
 """
-# SEhuffle_data(X,y,no_lable_vs_lable)UP {{{
+# SETUP {{{
 # ------------------------------------------
 
 from __future__ import division
@@ -387,13 +387,14 @@ def seq2seqfeatures(sequences,labels,feature_length,export_to_list_or_dict,info_
 		x_train.append(features)
 		y_train.append(label_set)
 		info_seq_list.append(info_seq)
+		# print 'Nr features: ' + str(len(x_train[0][0]))
 	return x_train,y_train,info_seq_list
 
 def extractQfeatures(feature_data,list_or_dict,feature_selection=[]):
 	magnitude = np.sum(np.square(feature_data[:,range(3)]),1)
 	magnitude = (magnitude - np.mean(magnitude))/np.max(np.abs(magnitude))
 	feature_data = np.c_[feature_data,magnitude] 
-	feature_data = feature_data[:,[3,4]]
+	# feature_data = feature_data[:,[3,4]]
 	# feature_data hold all features in columns
 	#features
 	mean = np.mean(feature_data,0)
@@ -503,6 +504,8 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	y_set = set(y_dict)
 	y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
 	quotent = y_dict_len[0] / sum(y_dict_len)
+	print 'lenth cutting'
+	print str(len(X))
 	# generalize over multiple classes: 
 	if(quotent > no_lable_vs_lable):
 		# decrease 0 class labels:
@@ -516,6 +519,8 @@ def shuffle_data(X,y,no_lable_vs_lable):
 		X_sub = [X[id] for id in id_new]
         y_sub = [y[id] for id in id_new]
 	# X, y = shuffle(X_sub, y_sub, random_state=0)
+	print str(len(X_sub))
+	print '--------------'
 	return X_sub,y_sub
 
 def cut_data(X_sub,y_sub,training_vs_testing):
@@ -624,7 +629,7 @@ def print_state_features(state_features):
 # ------------------------------------------
 
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=1):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
@@ -717,7 +722,7 @@ def main(inputargs):
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
+		run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),train_path=train_path,base_path=base_path,save=savestr)
 
 	# 2b. Normal prediction subjects
 	elif inputchoise == '2a2':
