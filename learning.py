@@ -303,6 +303,7 @@ def normalize_train(sequences):
 		print sequences[0]
 		print "-----------"
 
+
 def normalize_test(sequences,normalization_constants):
 	mean = normalization_constants[0]
 	maxval = normalization_constants[1]
@@ -432,11 +433,11 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 		y_pred = crf.predict(X_test)
 		sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
 		print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
-		plot_results(y_pred,X_test,time_seq,save)
+		#plot_results(y_pred,X_test,time_seq,save)
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
-		plot_results(y_pred,X_test,time_seq,save)
+		#plot_results(y_pred,X_test,time_seq,save)
 		return y_pred
 
 # ------------------------------------------ }}}
@@ -444,6 +445,7 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 # DATA HELPERS {{{
 # ------------------------------------------
 def shuffle_data(X,y,no_lable_vs_lable):
+	print('shuffle data')
 	X, y = shuffle(X, y, random_state=0)
 	# balance labels by subsampling:
 	y_dict = defaultdict(list)
@@ -454,27 +456,32 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
 	quotent = y_dict_len[0] / sum(y_dict_len)
 	# generalize over multiple classes: 
+	print('str(y_dict_len[0]) ',str(y_dict_len[0]))
+	print('str(y_dict_len[1]) ',str(y_dict_len[1]))
+	print('quotent: ', str(quotent))
 	if(quotent > no_lable_vs_lable):
 		# decrease 0 class labels:
 		newLen = int(sum(y_dict_len[1:])/(1-no_lable_vs_lable))
 		id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
 		y_sub = [y[id] for id in id_new]
+		print(str(newLen), 'new 0 class length')
 	else:
 		newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
 		id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
-        y_sub = [y[id] for id in id_new]
+		y_sub = [y[id] for id in id_new]
+		print(str(newLen), 'new 1 class length')
 	# X, y = shuffle(X_sub, y_sub, random_state=0)
 	return X,y
 
 def cut_data(X_sub,y_sub,training_vs_testing):
-	X, y = shuffle(X_sub, y_sub, random_state=0)
-	cut_id = int(len(X)*training_vs_testing)
-	X_train = X[:cut_id]
-	X_test = X[cut_id:]
-	y_train = y[:cut_id]
-	y_test = y[cut_id:]
+	# X, y = shuffle(X_sub, y_sub, random_state=0)
+	cut_id = int(len(X_sub)*training_vs_testing)
+	X_train = X_sub[:cut_id]
+	X_test = X_sub[cut_id:]
+	y_train = y_sub[:cut_id]
+	y_test = y_sub[cut_id:]
 	return X_train,X_test,y_train,y_test
 
 def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
@@ -594,7 +601,7 @@ def run_crf(inputvect = np.array([30, 0.7, 0.8, 3])):
 
 
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[400,600],0:[600,900]},base_path="",train_path="",test_path="",save=0):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
@@ -624,9 +631,9 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
 	crf = training(X_train, y_train)
-	#res = testing(crf,X_test,y_test)
+	res = testing(crf,X_test,y_test=y_test,save=save)
 	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test,time_seq=time_seq,save=save)
+	# res = testing(crf,X_test,time_seq=time_seq,save=save)
 
 def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0): 
 	starttime = time.time()
@@ -683,11 +690,11 @@ def main(inputargs):
 
 	# 2. Predict craving on marked events:
 	elif inputchoise == '2':
-		train_path = '**/ph3/'
-		test_path = 'ph2/'
+		train_path = '**/ph2/'
+		# test_path = 'ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
+		run_crf_raw(inputvect = np.array([10, 0.6, 0.8, 1]), train_path=train_path,base_path=base_path,save=savestr)
 
 	# 3. Predict craving on unmarkede data:
 	elif inputchoise == '3':
