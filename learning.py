@@ -461,18 +461,19 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	print('quotent: ', str(quotent))
 	if(quotent > no_lable_vs_lable):
 		# decrease 0 class labels:
-		newLen = int(sum(y_dict_len[1:])/(1-no_lable_vs_lable))
+		newLen = int(y_dict_len[1]*2*no_lable_vs_lable)
 		id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
 		y_sub = [y[id] for id in id_new]
-		print(str(newLen), 'new 0 class length')
+		print(str(newLen), 'new 0 class length: ', str(len(id_new)))
 	else:
+		# decrease 1 class labels:
 		newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
 		id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
 		y_sub = [y[id] for id in id_new]
 		print(str(newLen), 'new 1 class length')
-	# X, y = shuffle(X_sub, y_sub, random_state=0)
+	X, y = shuffle(X_sub, y_sub, random_state=0)
 	return X,y
 
 def cut_data(X_sub,y_sub,training_vs_testing):
@@ -485,8 +486,8 @@ def cut_data(X_sub,y_sub,training_vs_testing):
 	return X_train,X_test,y_train,y_test
 
 def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
-	X,y = shuffle_data(X,y,no_lable_vs_lable)
-	X_train,X_test,y_train,y_test = cut_data(X,y,training_vs_testing)
+	X_sub,y_sub = shuffle_data(X,y,no_lable_vs_lable)
+	X_train,X_test,y_train,y_test = cut_data(X_sub,y_sub,training_vs_testing)
 	return X_train,X_test,y_train,y_test
 
 def format_raw_data(data, inputvect,label_prior,normalization_constants=0):
@@ -621,7 +622,7 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		print "len(data) = " + str(len(train_data))
 		X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
 		print "len(X) = " + str(len(X))
-		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing=training_vs_testing,no_lable_vs_lable=no_lable_vs_lable)
 	else:
 		X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 		print "len(X) = " + str(len(X_train))
@@ -630,6 +631,7 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+	print "len x train" + str(len(X_train))
 	crf = training(X_train, y_train)
 	res = testing(crf,X_test,y_test=y_test,save=save)
 	print "Run time: " + str(time.time()-starttime)
@@ -692,9 +694,11 @@ def main(inputargs):
 	elif inputchoise == '2':
 		train_path = '**/ph2/'
 		# test_path = 'ph2/'
-		savestr = str(inputchoise)+"-"+inputargs[2]
+		savestr = str(inputchoise) # +"-"+inputargs[2]
 		print savestr + "\n"
-		run_crf_raw(inputvect = np.array([10, 0.6, 0.8, 1]), train_path=train_path,base_path=base_path,save=savestr)
+		inputvect = [inputargs[4], inputargs[2], inputargs[3], inputargs[5]]
+		run_crf_raw(inputvect = inputvect, train_path=train_path,base_path=base_path,save=savestr)
+		#run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 1.5]), train_path=train_path,base_path=base_path,save=savestr)
 
 	# 3. Predict craving on unmarkede data:
 	elif inputchoise == '3':
@@ -753,6 +757,50 @@ crf = lr.training(X_train, y_train)
 #res = lr.testing(crf,X_test,y_test)
 print "Run time: " + str(time.time()-starttime)
 res = lr.testing(crf,X_test)
+
+
+------------------------------------------
+
+
+
+print('shuffle data')
+X, y = shuffle(X, y, random_state=0)
+# balance labels by subsampling:
+y_dict = defaultdict(list)
+for i, y_i in enumerate(y):
+	y_dict[y_i[0]].append(i)
+# subsample
+y_set = set(y_dict)
+y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
+quotent = y_dict_len[0] / sum(y_dict_len)
+# generalize over multiple classes: 
+print('str(y_dict_len[0]) ',str(y_dict_len[0]))
+print('str(y_dict_len[1]) ',str(y_dict_len[1]))
+print('quotent: ', str(quotent))
+if(quotent > no_lable_vs_lable):
+	# decrease 0 class labels:
+	newLen = sum(y_dict_len)*no_lable_vs_lable
+	id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
+	X_sub = [X[id] for id in id_new]
+	y_sub = [y[id] for id in id_new]
+	print(str(newLen), 'new 0 class length: ', str(len(id_new)))
+else:
+	# decrease 1 class labels:
+	newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
+	id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
+	X_sub = [X[id] for id in id_new]
+	y_sub = [y[id] for id in id_new]
+	print(str(newLen), 'new 1 class length')
+
+
+
+
+
+
+
+
+
+
 
 
 
