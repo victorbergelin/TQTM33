@@ -89,6 +89,51 @@ def loadrawdata(file_name,headerrows=1):
 				sequence_list.append(list(row))
 		# print header
 	return sequence_list,header
+
+def full_load_raw_wrapper():
+	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
+	train_path = '**/ph2/'
+	X_train,X_test,y_train,y_test = full_load_raw(train_path=train_path,base_path=base_path)
+	return (X_train,y_train),(X_test,y_test)
+
+def full_load_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0):
+    starttime = time.time()
+    present_run(inputvect, label_prior,train_path, test_path)
+    data_frequency = 4
+    no_lable_vs_lable = inputvect[1]
+    training_vs_testing = inputvect[2]
+    full_train_path = base_path + train_path
+    X_train = []
+    X_test = []
+    y_train = []
+    y_test = []
+    time_seq = []
+    
+    train_data = load_raw_data(full_train_path,label_time_shift)
+    print "len(train_data) = " + str(len(train_data))
+    # Test data or not:
+    if test_path=="": 
+        print "len(data) = " + str(len(train_data))
+        X,y,time_seq = format_raw_data(train_data,inputvect,label_prior, export_to_list_or_dict=False)
+        print "len(X) = " + str(len(X))
+        X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+        print "Run time: " + str(time.time()-starttime)
+    else:
+        X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
+        print "len(X) = " + str(len(X_train))
+        X_train,y_train = shuffle_data(X_train,y_train,no_lable_vs_lable)
+        print "Shuffle data"
+        test_data = load_raw_test_data(test_path)
+        print "len(test_data) = " + str(len(test_data))
+        X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
+        print "Run time: " + str(time.time()-starttime)
+	X_train = np.array(X_train)
+	y_train = np.array(y_train)
+	X_test = np.array(X_test)
+	y_test = np.array(y_test)
+
+	return X_train,X_test,y_train,y_test
+
 # ------------------------------------------ }}}
 
 # LOW LEVEL DATA HELPERS {{{
@@ -304,7 +349,6 @@ def normalize_train(sequences):
 		print sequences[0]
 		print "-----------"
 
-
 def normalize_test(sequences,normalization_constants):
 	mean = normalization_constants[0]
 	maxval = normalization_constants[1]
@@ -437,12 +481,11 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 		y_pred = crf.predict(X_test)
 		sorted_labels = [str(x) for x in sorted(labels,key=lambda name: (name[1:], name[0]))]
 		print(metrics.flat_classification_report(y_test, y_pred, digits=3, labels=sorted_labels))
-
 		# plot_results(y_pred,X_test,time_seq,save)
 		return metrics.flat_accuracy_score(y_test, y_pred) # *** , labels=sorted_labels)
 	else:
 		y_pred = crf.predict(X_test)
-		#plot_results(y_pred,X_test,time_seq,save)
+		plot_results(y_pred,X_test,time_seq,save)
 		return y_pred
 
 # ------------------------------------------ }}}
@@ -450,7 +493,6 @@ def testing(crf,X_test,time_seq=[],y_test=[],save=0):
 # HIGH LEVEL DATA HELPERS {{{
 # ------------------------------------------
 def shuffle_data(X,y,no_lable_vs_lable):
-	print('shuffle data')
 	X, y = shuffle(X, y, random_state=0)
 	# balance labels by subsampling:
 	y_dict = defaultdict(list)
@@ -465,39 +507,34 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	print 'lenth cutting'
 	print str(len(X))
 	# generalize over multiple classes: 
-	print('str(y_dict_len[0]) ',str(y_dict_len[0]))
-	print('str(y_dict_len[1]) ',str(y_dict_len[1]))
-	print('quotent: ', str(quotent))
 	if(quotent > no_lable_vs_lable):
 		# decrease 0 class labels:
-		newLen = int(y_dict_len[1]*2*no_lable_vs_lable)
+		newLen = int(2*y_dict_len[1]*no_lable_vs_lable)
 		id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
 		y_sub = [y[id] for id in id_new]
-		print(str(newLen), 'new 0 class length: ', str(len(id_new)))
 	else:
-		# decrease 1 class labels:
 		newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
 		id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
-		y_sub = [y[id] for id in id_new]
-		print(str(newLen), 'new 1 class length')
-	X, y = shuffle(X_sub, y_sub, rando_state=0)
+        y_sub = [y[id] for id in id_new]
+	# X, y = shuffle(X_sub, y_sub, random_state=0)
 	print str(len(X_sub))
-	return X,y
+	print '--------------'
+	return X_sub,y_sub
 
 def cut_data(X_sub,y_sub,training_vs_testing):
-	# X, y = shuffle(X_sub, y_sub, random_state=0)
-	cut_id = int(len(X_sub)*training_vs_testing)
-	X_train = X_sub[:cut_id]
-	X_test = X_sub[cut_id:]
-	y_train = y_sub[:cut_id]
-	y_test = y_sub[cut_id:]
+	X, y = shuffle(X_sub, y_sub, random_state=0)
+	cut_id = int(len(X)*training_vs_testing)
+	X_train = X[:cut_id]
+	X_test = X[cut_id:]
+	y_train = y[:cut_id]
+	y_test = y[cut_id:]
 	return X_train,X_test,y_train,y_test
 
 def shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7):
-	X_sub,y_sub = shuffle_data(X,y,no_lable_vs_lable)
-	X_train,X_test,y_train,y_test = cut_data(X_sub,y_sub,training_vs_testing)
+	X,y = shuffle_data(X,y,no_lable_vs_lable)
+	X_train,X_test,y_train,y_test = cut_data(X,y,training_vs_testing)
 	return X_train,X_test,y_train,y_test
 
 def format_raw_data(data, inputvect,label_prior,normalization_constants=0,export_to_list_or_dict=True):
@@ -612,7 +649,10 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=
 		print "len(data) = " + str(len(train_data))
 		X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
 		print "len(X) = " + str(len(X))
-		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing=training_vs_testing,no_lable_vs_lable=no_lable_vs_lable)
+		X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing)
+		crf = training(X_train, y_train)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,y_test=y_test,save=save)
 	else:
 		X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 		print "len(X) = " + str(len(X_train))
@@ -621,11 +661,10 @@ def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=
 		test_data = load_raw_test_data(test_path)
 		print "len(test_data) = " + str(len(test_data))
 		X_test,y_test,time_seq = format_raw_data(test_data,inputvect,label_prior,normalization_constants)
-	print "len x train" + str(len(X_train))
-	crf = training(X_train, y_train)
-	res = testing(crf,X_test,y_test=y_test,save=save)
-	print "Run time: " + str(time.time()-starttime)
-	# res = testing(crf,X_test,time_seq=time_seq,save=save)
+		crf = training(X_train, y_train)
+		print "Run time: " + str(time.time()-starttime)
+		res = testing(crf,X_test,time_seq=time_seq,save=save)
+	
 
 def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=0): 
 	starttime = time.time()
@@ -650,6 +689,7 @@ def run_crf_raw_subjects(inputvect = np.array([30, 0.7, 0.8, 5]),subj_train=[],s
 	print "3. Train time: " + str(time.time()-starttime)
 	print "Shuffle data"
 	crf = training(X_train, y_train)
+	print "4. Train time: " + str(time.time()-starttime)
 	subjects = ['100','101','102','103','104','106','107','108','109','110']
 	for s in subjects:
 		full_test_path = base_path + s + "/" + test_path
@@ -698,7 +738,6 @@ def main(inputargs):
 		print savestr + "\n"
 		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
 
-
 	# 2a3. Normal prediction subjects
 	elif inputchoise == '2a2':
 		train_path = '**/ph2/'
@@ -740,12 +779,8 @@ def main(inputargs):
 	elif inputchoise == '4a1':
 		train_path = '**/ph3/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
-	# 2. Predict craving on marked events:
-	elif inputchoise == '2':
-		train_path = '**/ph2/'
-		# test_path = 'ph2/'
-		savestr = str(inputchoise) # +"-"+inputargs[2]
-		run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 1.5]), train_path=train_path,base_path=base_path,save=savestr)
+		print savestr + "\n"
+		run_crf_raw(train_path=train_path,base_path=base_path,save=savestr)
 
 	# 4a2. distribution of cravings over individuals
 	elif inputchoise == '4a2':
@@ -869,50 +904,6 @@ crf = lr.training(X_train, y_train)
 #res = lr.testing(crf,X_test,y_test)
 print "Run time: " + str(time.time()-starttime)
 res = lr.testing(crf,X_test)
-
-
-------------------------------------------
-
-
-
-print('shuffle data')
-X, y = shuffle(X, y, random_state=0)
-# balance labels by subsampling:
-y_dict = defaultdict(list)
-for i, y_i in enumerate(y):
-	y_dict[y_i[0]].append(i)
-# subsample
-y_set = set(y_dict)
-y_dict_len = [len(y_dict[y_set_i]) for y_set_i in sorted(list(y_set))]
-quotent = y_dict_len[0] / sum(y_dict_len)
-# generalize over multiple classes: 
-print('str(y_dict_len[0]) ',str(y_dict_len[0]))
-print('str(y_dict_len[1]) ',str(y_dict_len[1]))
-print('quotent: ', str(quotent))
-if(quotent > no_lable_vs_lable):
-	# decrease 0 class labels:
-	newLen = sum(y_dict_len)*no_lable_vs_lable
-	id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
-	X_sub = [X[id] for id in id_new]
-	y_sub = [y[id] for id in id_new]
-	print(str(newLen), 'new 0 class length: ', str(len(id_new)))
-else:
-	# decrease 1 class labels:
-	newLen = int(y_dict_len[0]*(1-no_lable_vs_lable))
-	id_new = y_dict['1'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
-	X_sub = [X[id] for id in id_new]
-	y_sub = [y[id] for id in id_new]
-	print(str(newLen), 'new 1 class length')
-
-
-
-
-
-
-
-
-
-
 
 
 
