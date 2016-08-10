@@ -509,7 +509,7 @@ def shuffle_data(X,y,no_lable_vs_lable):
 	# generalize over multiple classes: 
 	if(quotent > no_lable_vs_lable):
 		# decrease 0 class labels:
-		newLen = int(sum(y_dict_len[1:])/(1-no_lable_vs_lable))
+		newLen = int(2*y_dict_len[1]*no_lable_vs_lable)
 		id_new = y_dict['0'][:newLen] + [y_dict[id] for id in y_set if not id in ['0']][0]
 		X_sub = [X[id] for id in id_new]
 		y_sub = [y[id] for id in id_new]
@@ -716,6 +716,13 @@ def main(inputargs):
 	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 	inputchoise = inputargs[1]
 	
+	# 2. 
+	if inputchoise == '2':
+		train_path = '**/ph2/'
+		savestr = str(inputchoise)
+		print savestr + "\n"
+		inputvect = [inputargs[4], inputargs[2], inputargs[3], inputargs[5]]
+		run_crf_raw(inputvect = inputvect,train_path=train_path,base_path=base_path,save=savestr)
 
 	# 2a. NORMLAL PREDICTION SMOKING
 	if inputchoise == '2a1':
