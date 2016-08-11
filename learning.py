@@ -720,11 +720,11 @@ def main(inputargs):
 	
 	# 2. 
 	if inputchoise == '2':
-		train_path = '100/ph2/'
+		train_path = '**/ph2/'
 		savestr = str(inputchoise)
 		print savestr + "\n"
 		inputvect = [inputargs[4], inputargs[2], inputargs[3], inputargs[5]]
-		run_crf_raw(inputvect = inputvect,train_path=train_path,base_path=base_path,save=savestr)
+		run_crf_raw(inputvect = inputvect,train_path=train_path,base_path=base_path,save=0)
 
 	# 2a. NORMLAL PREDICTION SMOKING
 	if inputchoise == '2a1':
@@ -746,10 +746,6 @@ def main(inputargs):
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
 		run_crf_raw_subjects(train_path=train_path,base_path=base_path,save=savestr)
-
-
-
-
 
 	# 2b. Predict smoking without markers 
 	elif inputchoise == '2b':
@@ -847,13 +843,13 @@ train_data = lr.load_raw_data(full_train_path,label_time_shift)
 print "len(train_data) = " + str(len(train_data))
 # Test data or not:
 if test_path=="":
-	print "len(data) = " + str(len(train_data))
-	X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
-	print "len(X) = " + str(len(X))
-	X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7)
-	crf = training(X_train, y_train)
-	print "Run time: " + str(time.time()-starttime)
-	res = testing(crf,X_test,y_test,save=save)
+print "len(data) = " + str(len(train_data))
+X,y,time_seq = format_raw_data(train_data,inputvect,label_prior)
+print "len(X) = " + str(len(X))
+X_train,X_test,y_train,y_test = shuffle_and_cut(X,y,training_vs_testing=0.8,no_lable_vs_lable=0.7)
+crf = training(X_train, y_train)
+print "Run time: " + str(time.time()-starttime)
+res = testing(crf,X_test,y_test,save=save)
 else:
 	X_train,y_train,normalization_constants = format_raw_data(train_data,inputvect,label_prior,normalization_constants=1)
 	print "len(X) = " + str(len(X_train))

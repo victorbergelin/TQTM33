@@ -692,7 +692,7 @@ def main(inputargs):
 
 	# 2. Predict craving on marked events:
 	elif inputchoise == '2':
-		train_path = '**/ph2/'
+		train_path = '101/ph2/'
 		# test_path = 'ph2/'
 		savestr = str(inputchoise) # +"-"+inputargs[2]
 		print savestr + "\n"
