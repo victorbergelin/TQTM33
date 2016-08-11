@@ -252,6 +252,7 @@ def data2seq_raw(data,window_length,label_prior):
 	label_length = int(data_frequency * np.mean(label_prior[1])) # Average over min and max time of label
 	label_margin = int(np.diff(label_prior[1]))
 	# data to sequences: use all as one serquence:
+
 	for files_data in data:
 		labler_iterator = label_length
 		# If sequence [window * i..] have label: 
@@ -262,6 +263,7 @@ def data2seq_raw(data,window_length,label_prior):
 		y_window_list = np.array([])
 		label = 0
 		label_pass = False
+		print str(len(files_data))
 		for i, row in enumerate(files_data):
 			data_row = []
 			# Labeling: should detect time shift between frames? (non continous) ***
@@ -718,7 +720,7 @@ def main(inputargs):
 	
 	# 2. 
 	if inputchoise == '2':
-		train_path = '**/ph2/'
+		train_path = '100/ph2/'
 		savestr = str(inputchoise)
 		print savestr + "\n"
 		inputvect = [inputargs[4], inputargs[2], inputargs[3], inputargs[5]]
