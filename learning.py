@@ -263,7 +263,7 @@ def data2seq_raw(data,window_length,label_prior):
 		y_window_list = np.array([])
 		label = 0
 		label_pass = False
-		print str(len(files_data))
+		print "subj, data length: " + str(len(files_data))
 		for i, row in enumerate(files_data):
 			data_row = []
 			# Labeling: should detect time shift between frames? (non continous) ***
@@ -631,7 +631,7 @@ def print_state_features(state_features):
 # ------------------------------------------
 
 # Run on raw data:
-def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[30,600],0:[600,7200]},base_path="",train_path="",test_path="",save=0,label_time_shift=1):
+def run_crf_raw(inputvect = np.array([30, 0.7, 0.8, 2]),subj_train=[],subj_test=[],label_prior={1:[400,600],0:[600,800]},base_path="/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/",train_path="**/ph2/",test_path="",save=0,label_time_shift=1):
 	starttime = time.time()
 	present_run(inputvect, label_prior,train_path, test_path)
 	data_frequency = 4
@@ -718,8 +718,12 @@ def main(inputargs):
 	base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 	inputchoise = inputargs[1]
 	
+	if inputchoise == '1':
+		train_path = inputargs[2] + '/ph2/'
+		run_crf_raw(train_path=train_path)
+
 	# 2. 
-	if inputchoise == '2':
+	elif inputchoise == '2':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)
 		print savestr + "\n"
@@ -727,7 +731,7 @@ def main(inputargs):
 		run_crf_raw(inputvect = inputvect,train_path=train_path,base_path=base_path,save=0)
 
 	# 2a. NORMLAL PREDICTION SMOKING
-	if inputchoise == '2a1':
+	elif inputchoise == '2a1':
 		train_path = '**/ph2/'
 		savestr = str(inputchoise)+"-"+inputargs[2]
 		print savestr + "\n"
@@ -808,6 +812,7 @@ if __name__ == '__main__':
 
 # Command line run: {{{
 # ------------------------------------------
+
 """ 
 import learning as lr
 import numpy as np
@@ -821,7 +826,18 @@ train_path=""
 test_path=""
 base_path = '/Users/victorbergelin/LocalRepo/Data/Rawdataimport/subjects/'
 train_path = '**/ph2/'
+
+label_prior={1:[400,600],0:[600,7200]}
+lr.run_crf_raw(inputvect = np.array([20, 0.7, 0.8, 3]),label_prior=label_prior,train_path=train_path,base_path=base_path)
+
+
+
+
+
+
+
 full_train_path = base_path + train_path
+
 
 starttime = time.time()
 lr.present_run(inputvect, label_prior,train_path, test_path)
