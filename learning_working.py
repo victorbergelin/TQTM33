@@ -263,11 +263,8 @@ def data2seq_raw(data,window_length,label_prior):
 		y_window_list = np.array([])
 		label = 0
 		label_pass = False
-		len_files = len(files_data)/10
-		print "subj, data length: " + str(len_files*10)
+		print "subj, data length: " + str(len(files_data))
 		for i, row in enumerate(files_data):
-			if (i+1) % len_files == 0:
-				print " - " + str(1/len_files*i*10)
 			data_row = []
 			# Labeling: should detect time shift between frames? (non continous) ***
 			if row[2] != 0:
